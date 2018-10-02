@@ -47,7 +47,7 @@
 
   <properties>
     <build.number>${timestamp}-dev</build.number>
-    <kafka-support.version>1.0</kafka-support.version>
+    <kafka-support.version>1.0.0</kafka-support.version>
   </properties>
 
   <dependencies>
