@@ -1,0 +1,13 @@
+version: '2'
+services:
+  message-signer-1:
+    image: ubirch/${project.artifactId}:${build.number}
+    depends_on:
+    - kafka
+    - zookeeper
+    ports:
+    - "9013:9010"
+    environment:
+      KAFKA_URL: "kafka:9092"
+      KAFKA_TOPIC_RESPONSE_PAYLOAD_JSON: "response.payload.json"
+      KAFKA_TOPIC_RESPONSE_PAYLOAD_BIN: "response.payload.bin"
