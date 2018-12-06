@@ -100,6 +100,11 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <dependency>
+      <groupId>com.typesafe.akka</groupId>
+      <artifactId>akka-slf4j_${scala.major.version}</artifactId>
+      <version>${akka-slf4j.version}</version>
+    </dependency>
 
     <!-- kafka -->
     <dependency>
