@@ -1,18 +1,19 @@
 package com.ubirch
 
-import akka.Done
+import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.kafka._
 import akka.kafka.scaladsl.Consumer.DrainingControl
 import akka.kafka.scaladsl.{Consumer, Producer}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Keep, RunnableGraph}
+import akka.stream.scaladsl.{Keep, RestartSink, RestartSource, RunnableGraph, Sink, Source}
 import com.typesafe.config.{Config, ConfigFactory}
 import com.ubirch.kafkasupport.MessageEnvelope
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringDeserializer, StringSerializer}
 
 import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.duration._
 
 package object messagesigner {
 
@@ -41,10 +42,23 @@ package object messagesigner {
   val incomingTopic: String = conf.getString("kafka.topic.incoming")
   val outgoingTopic: String = conf.getString("kafka.topic.outgoing")
 
+  val kafkaSource: Source[ConsumerMessage.CommittableMessage[String, String], NotUsed] =
+    RestartSource.withBackoff(
+      minBackoff = 2.seconds,
+      maxBackoff = 1.minute,
+      randomFactor = 0.2
+    ) { () => Consumer.committableSource(consumerSettings, Subscriptions.topics(incomingTopic)) }
 
-  val messageSignerStream: RunnableGraph[DrainingControl[Done]] =
-    Consumer
-      .committableSource(consumerSettings, Subscriptions.topics(incomingTopic))
+  val kafkaSink: Sink[ProducerMessage.Envelope[String, String, ConsumerMessage.Committable], NotUsed] =
+    RestartSink.withBackoff(
+      minBackoff = 2.seconds,
+      maxBackoff = 1.minute,
+      randomFactor = 0.2
+    ) { () => Producer.commitableSink(producerSettings) }
+
+
+  val messageSignerStream: RunnableGraph[NotUsed] =
+    kafkaSource
       .map { msg =>
         val messageEnvelope = MessageEnvelope.fromRecord(msg.record)
         val signedMessage = signPayload(messageEnvelope)
@@ -56,8 +70,7 @@ package object messagesigner {
           msg.committableOffset
         )
       }
-      .toMat(Producer.commitableSink(producerSettings))(Keep.both)
-      .mapMaterializedValue(DrainingControl.apply)
+      .to(kafkaSink)
 
   /**
     * ToDo BjB 24.09.18 : : signing of payload should happen somewhere below
