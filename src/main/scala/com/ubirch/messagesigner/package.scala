@@ -1,17 +1,18 @@
 package com.ubirch
 
-import akka.{Done, NotUsed}
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.kafka._
-import akka.kafka.scaladsl.Consumer.DrainingControl
 import akka.kafka.scaladsl.{Consumer, Producer}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Keep, RestartSink, RestartSource, RunnableGraph, Sink, Source}
+import akka.stream.scaladsl.{RestartSink, RestartSource, RunnableGraph, Sink, Source}
 import com.typesafe.config.{Config, ConfigFactory}
 import com.ubirch.kafkasupport.MessageEnvelope
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringDeserializer, StringSerializer}
+import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 
+import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 
@@ -39,7 +40,7 @@ package object messagesigner {
       .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
 
 
-  val incomingTopic: String = conf.getString("kafka.topic.incoming")
+  val incomingTopic: mutable.Buffer[String] = conf.getStringList("kafka.topic.incoming").asScala
   val outgoingTopic: String = conf.getString("kafka.topic.outgoing")
 
   val kafkaSource: Source[ConsumerMessage.CommittableMessage[String, String], NotUsed] =
@@ -47,7 +48,7 @@ package object messagesigner {
       minBackoff = 2.seconds,
       maxBackoff = 1.minute,
       randomFactor = 0.2
-    ) { () => Consumer.committableSource(consumerSettings, Subscriptions.topics(incomingTopic)) }
+    ) { () => Consumer.committableSource(consumerSettings, Subscriptions.topics(incomingTopic: _*)) }
 
   val kafkaSink: Sink[ProducerMessage.Envelope[String, String, ConsumerMessage.Committable], NotUsed] =
     RestartSink.withBackoff(
