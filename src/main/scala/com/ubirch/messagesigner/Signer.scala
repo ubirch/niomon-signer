@@ -7,9 +7,11 @@ import com.ubirch.kafkasupport.MessageEnvelope
 import com.ubirch.messagesigner.Kafka.StringOrByteArray
 import com.ubirch.protocol.codec.{JSONProtocolDecoder, JSONProtocolEncoder, MsgPackProtocolEncoder}
 import com.ubirch.protocol.{ProtocolMessage, ProtocolSigner}
-import net.i2p.crypto.eddsa.EdDSAEngine
+import net.i2p.crypto.eddsa.{EdDSAEngine, EdDSAPrivateKey}
 
-object Signer {
+object Signer extends Signer(Keys.privateKey)
+
+abstract class Signer(privateKey: EdDSAPrivateKey) {
   def sign(envelope: MessageEnvelope[String]): MessageEnvelope[StringOrByteArray] = {
     val payload = JSONProtocolDecoder.getDecoder.decode(envelope.payload)
     val (encoded, newContentType) = envelope.headers.get("Content-Type") match {
@@ -28,8 +30,8 @@ object Signer {
     val hash = sha512.digest()
 
     val sig = Signature.getInstance(EdDSAEngine.SIGNATURE_ALGORITHM)
-    sig.initSign(Keys.privateKey)
-    sig.setParameter(EdDSAEngine.ONE_SHOT_MODE) // see EdDSAEngine docs
+    sig.initSign(privateKey)
+    sig.setParameter(EdDSAEngine.ONE_SHOT_MODE)
     sig.update(hash)
     val signature = sig.sign()
 
