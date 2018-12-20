@@ -11,7 +11,9 @@ import net.i2p.crypto.eddsa.{EdDSAEngine, EdDSAPrivateKey}
 
 object Signer extends Signer(Keys.privateKey)
 
-abstract class Signer(privateKey: EdDSAPrivateKey) {
+abstract class Signer(_privateKey: => EdDSAPrivateKey) {
+  lazy private val privateKey = _privateKey
+
   def sign(envelope: MessageEnvelope[String]): MessageEnvelope[StringOrByteArray] = {
     val payload = JSONProtocolDecoder.getDecoder.decode(envelope.payload)
     val (encoded, newContentType) = envelope.headers.get("Content-Type") match {

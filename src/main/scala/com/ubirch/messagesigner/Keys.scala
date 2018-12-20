@@ -10,7 +10,7 @@ import net.i2p.crypto.eddsa.{EdDSAKey, EdDSAPrivateKey, EdDSAPublicKey}
 object Keys {
   private val privateKeyAlias = "pke_" + Config.keyStoreEntryAlias
 
-  private val keyStore = {
+  lazy private val keyStore = {
     val ks = KeyStore.getInstance("jks")
     var ksFileInputStream: FileInputStream = null
     val fName = Config.keyStoreFilename
@@ -38,6 +38,6 @@ object Keys {
     ks
   }
 
-  val privateKey: EdDSAPrivateKey = keyStore.getKey(privateKeyAlias, Config.keyStorePassword.toCharArray)
+  lazy val privateKey: EdDSAPrivateKey = keyStore.getKey(privateKeyAlias, Config.keyStorePassword.toCharArray)
     .asInstanceOf[EdDSAPrivateKey]
 }

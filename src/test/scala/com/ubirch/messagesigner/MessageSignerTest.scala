@@ -49,7 +49,6 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
     val flow = messageSignerFlow(signer)
 
     val graph = Source[String](testMessages).map(mkJsonMessage).via(flow).toMat(Sink.seq)(Keep.right)
-
     val res = Await.result(graph.run(), 3.seconds)
 
     val ver = getVerifier(kPair)
@@ -71,27 +70,22 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
     """{"version":19,"uuid":"670f05ec-c850-43a0-b6ba-225cac26e3b2","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":50,"signed":"lhOwZw8F7MhQQ6C2uiJcrCbjstoAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAyk3sqzQU5","signature":"wo8xg5z+j4EVKhDLYZS57HgxSoGwdxsPx6+7BG3HzNyqRy4j4vv+Jff+r3iLrQDxO6w6ffwKSS+RuwC7FxyKAQ==","payload":[123,42,1337]}"""
   )
 
+  private val dummyCommitableOffset = new CommittableOffset {
+    override def partitionOffset: ConsumerMessage.PartitionOffset = ???
+    override def commitScaladsl(): Future[Done] = ???
+    override def commitJavadsl(): CompletionStage[Done] = ???
+  }
+
   private def mkBinMessage(payload: String) = ConsumerMessage.CommittableMessage(
     record = new ConsumerRecord("topic", 0, 0, "key", payload),
-    committableOffset = new CommittableOffset {
-      override def partitionOffset: ConsumerMessage.PartitionOffset = ???
-      override def commitScaladsl(): Future[Done] = ???
-      override def commitJavadsl(): CompletionStage[Done] = ???
-    }
+    committableOffset = dummyCommitableOffset
   )
 
   private def mkJsonMessage(payload: String) = {
     val record = new ConsumerRecord("topic", 0, 0, "key", payload)
     record.headers().add("Content-Type", "application/json".getBytes(StandardCharsets.UTF_8))
 
-    ConsumerMessage.CommittableMessage(
-      record = record,
-      committableOffset = new CommittableOffset {
-        override def partitionOffset: ConsumerMessage.PartitionOffset = ???
-        override def commitScaladsl(): Future[Done] = ???
-        override def commitJavadsl(): CompletionStage[Done] = ???
-      }
-    )
+    ConsumerMessage.CommittableMessage(record, dummyCommitableOffset)
   }
 
   private def getVerifier(kPair: KeyPair): ProtocolVerifier = (_: UUID, data: Array[Byte], offset: Int, len: Int, signature: Array[Byte]) => {
@@ -101,7 +95,7 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     val sig = Signature.getInstance(EdDSAEngine.SIGNATURE_ALGORITHM)
     sig.initVerify(new EdDSACertificate(kPair.getPublic.asInstanceOf[EdDSAPublicKey]))
-    sig.setParameter(EdDSAEngine.ONE_SHOT_MODE) // see EdDSAEngine docs
+    sig.setParameter(EdDSAEngine.ONE_SHOT_MODE)
     sig.update(hash)
 
     sig.verify(signature)
