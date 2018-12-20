@@ -27,7 +27,7 @@ package object messagesigner extends StrictLogging {
     Flow[CommittableMessage[String, String]].map { msg =>
       val messageEnvelope = MessageEnvelope.fromRecord(msg.record)
 
-      logger.debug(messageEnvelope.payload)
+      logger.debug(s"signing message: ${messageEnvelope.payload}")
 
       val signedMessage = signer.sign(messageEnvelope)
 
