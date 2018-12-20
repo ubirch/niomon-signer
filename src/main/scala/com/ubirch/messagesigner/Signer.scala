@@ -26,7 +26,7 @@ abstract class Signer(_privateKey: => EdDSAPrivateKey) {
     MessageEnvelope(encoded, newHeaders)
   }
 
-  private val signer: ProtocolSigner = (uuid: UUID, data: Array[Byte], offset: Int, len: Int) => {
+  private val signer: ProtocolSigner = (_: UUID, data: Array[Byte], offset: Int, len: Int) => {
     val sha512 = MessageDigest.getInstance("SHA-512")
     sha512.update(data, offset, len)
     val hash = sha512.digest()
