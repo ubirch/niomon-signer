@@ -39,6 +39,6 @@ package object messagesigner extends StrictLogging {
       )
     }
 
-  val messageSignerGraph: RunnableGraph[NotUsed] = Kafka.source.via(messageSignerFlow(Signer)).to(Kafka.sink)
+  val messageSignerGraph: RunnableGraph[NotUsed] = Kafka.source via messageSignerFlow(Signer) to Kafka.sink
 
 }

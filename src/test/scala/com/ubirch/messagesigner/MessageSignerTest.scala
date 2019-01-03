@@ -9,7 +9,6 @@ import akka.Done
 import akka.kafka.ConsumerMessage
 import akka.kafka.ConsumerMessage.CommittableOffset
 import akka.stream.scaladsl.{Keep, Sink, Source}
-import com.ubirch.kafkasupport.MessageEnvelope
 import com.ubirch.protocol.ProtocolVerifier
 import com.ubirch.protocol.codec.{JSONProtocolDecoder, MsgPackProtocolDecoder}
 import net.i2p.crypto.eddsa.{KeyPairGenerator => _, _}
