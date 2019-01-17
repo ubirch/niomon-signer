@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2019 ubirch GmbH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.ubirch.messagesigner
 
 import java.nio.charset.StandardCharsets
@@ -15,9 +31,8 @@ import net.i2p.crypto.eddsa.{KeyPairGenerator => _, _}
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
-import scala.concurrent.Future
-import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
 
@@ -33,13 +48,13 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     val decoded = res.map { r =>
       val v = r.record.value()
-      v.inner shouldBe an [Array[Byte]]
+      v.inner shouldBe an[Array[Byte]] // scalastyle:off no.whitespace.before.left.bracket
       MsgPackProtocolDecoder.getDecoder.decode(v.inner.asInstanceOf[Array[Byte]], ver)
     }
 
     val originalPayloads = testMessages.map(JSONProtocolDecoder.getDecoder.decode _).map(_.getPayload)
 
-    decoded.map(_.getPayload) should equal (originalPayloads)
+    decoded.map(_.getPayload) should equal(originalPayloads)
   }
 
   it should "sign json messages with a private key" in {
@@ -54,25 +69,35 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     val decoded = res.map { r =>
       val v = r.record.value()
-      v.inner shouldBe a [String]
+      v.inner shouldBe a[String] // scalastyle:off no.whitespace.before.left.bracket
       JSONProtocolDecoder.getDecoder.decode(v.inner.asInstanceOf[String], ver)
     }
 
     val originalPayloads = testMessages.map(JSONProtocolDecoder.getDecoder.decode _).map(_.getPayload)
 
-    decoded.map(_.getPayload) should equal (originalPayloads)
+    decoded.map(_.getPayload) should equal(originalPayloads)
   }
 
+  // scalastyle:off line.size.limit
   private val testMessages = List(
     """{"version":19,"uuid":"7fb478b7-4aba-461f-bc50-faba6d754490","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"signed":"lhOwf7R4t0q6Rh+8UPq6bXVEkNoAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAq3NvbWUgYnl0ZXMh","signature":"2+E3O/lYub2LM5LbFE2qDMApCFLTLxKtYK6vE2bcT1k+EiUWHAXBFJztcMLryd5JK8dqQI0B2QFTETIFNQReDQ==","payload":"some bytes!"}""",
     """{"version":19,"uuid":"d21c174f-5419-49d4-a614-e95ca0ea862e","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"signed":"lhOw0hwXT1QZSdSmFOlcoOqGLtoAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsHNvbWUgb3RoZXIgc3R1ZmY=","signature":"r8+yz+omS35tBnAc6QTVAE5tbJcU4QSjf1mHgD/3f0eiWOfzGT0cKwmdJf/1W4LSr0pXZWaoPrF0oIxsW+fHDw==","payload":"some other stuff"}""",
     """{"version":19,"uuid":"670f05ec-c850-43a0-b6ba-225cac26e3b2","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":50,"signed":"lhOwZw8F7MhQQ6C2uiJcrCbjstoAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAyk3sqzQU5","signature":"wo8xg5z+j4EVKhDLYZS57HgxSoGwdxsPx6+7BG3HzNyqRy4j4vv+Jff+r3iLrQDxO6w6ffwKSS+RuwC7FxyKAQ==","payload":[123,42,1337]}"""
   )
+  // scalastyle:on line.size.limit
 
+  //noinspection NotImplementedCode
   private val dummyCommitableOffset = new CommittableOffset {
     override def partitionOffset: ConsumerMessage.PartitionOffset = ???
+
     override def commitScaladsl(): Future[Done] = ???
+
     override def commitJavadsl(): CompletionStage[Done] = ???
+  }
+
+  override protected def beforeAll(): Unit = {
+    Security.addProvider(new EdDSASecurityProvider())
+    Security.addProvider(new EdDSACertificateProvider())
   }
 
   private def mkBinMessage(payload: String) = ConsumerMessage.CommittableMessage(
@@ -98,10 +123,5 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
     sig.update(hash)
 
     sig.verify(signature)
-  }
-
-  override protected def beforeAll(): Unit = {
-    Security.addProvider(new EdDSASecurityProvider())
-    Security.addProvider(new EdDSACertificateProvider())
   }
 }
