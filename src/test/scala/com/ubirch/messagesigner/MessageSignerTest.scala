@@ -48,7 +48,7 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     val decoded = res.map { r =>
       val v = r.record.value()
-      v.inner shouldBe an[Array[Byte]] // scalastyle:off no.whitespace.before.left.bracket
+      v.inner shouldBe an[Array[Byte]]
       MsgPackProtocolDecoder.getDecoder.decode(v.inner.asInstanceOf[Array[Byte]], ver)
     }
 
@@ -69,7 +69,7 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     val decoded = res.map { r =>
       val v = r.record.value()
-      v.inner shouldBe a[String] // scalastyle:off no.whitespace.before.left.bracket
+      v.inner shouldBe a[String]
       JSONProtocolDecoder.getDecoder.decode(v.inner.asInstanceOf[String], ver)
     }
 
