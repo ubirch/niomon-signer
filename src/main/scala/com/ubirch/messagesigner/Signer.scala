@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2019 ubirch GmbH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.ubirch.messagesigner
 
 import java.security.{MessageDigest, Signature}
@@ -13,19 +29,6 @@ object Signer extends Signer(Keys.privateKey)
 
 abstract class Signer(_privateKey: => EdDSAPrivateKey) {
   lazy private val privateKey = _privateKey
-
-  def sign(envelope: MessageEnvelope[String]): MessageEnvelope[StringOrByteArray] = {
-    val payload = JSONProtocolDecoder.getDecoder.decode(envelope.payload)
-    val (encoded, newContentType) = envelope.headers.get("Content-Type") match {
-      case Some(ct@"application/json") => (StringOrByteArray(signAndEncodeJson(payload)), ct)
-      case _ => (StringOrByteArray(signAndEncodeMsgPack(payload)), "application/octet-stream")
-    }
-
-    val newHeaders = envelope.headers + ("Content-Type" -> newContentType)
-
-    MessageEnvelope(encoded, newHeaders)
-  }
-
   private val signer: ProtocolSigner = (_: UUID, data: Array[Byte], offset: Int, len: Int) => {
     val sha512 = MessageDigest.getInstance("SHA-512")
     sha512.update(data, offset, len)
@@ -38,6 +41,18 @@ abstract class Signer(_privateKey: => EdDSAPrivateKey) {
     val signature = sig.sign()
 
     signature
+  }
+
+  def sign(envelope: MessageEnvelope[String]): MessageEnvelope[StringOrByteArray] = {
+    val payload = JSONProtocolDecoder.getDecoder.decode(envelope.payload)
+    val (encoded, newContentType) = envelope.headers.get("Content-Type") match {
+      case Some(ct@"application/json") => (StringOrByteArray(signAndEncodeJson(payload)), ct)
+      case _ => (StringOrByteArray(signAndEncodeMsgPack(payload)), "application/octet-stream")
+    }
+
+    val newHeaders = envelope.headers + ("Content-Type" -> newContentType)
+
+    MessageEnvelope(encoded, newHeaders)
   }
 
   private def signAndEncodeJson(payload: ProtocolMessage): String = {
