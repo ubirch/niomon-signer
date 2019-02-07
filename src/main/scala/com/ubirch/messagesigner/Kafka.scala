@@ -22,6 +22,7 @@ import akka.NotUsed
 import akka.kafka._
 import akka.kafka.scaladsl.{Consumer, Producer}
 import akka.stream.scaladsl.{RestartSink, RestartSource, Sink, Source}
+import com.ubirch.kafka.{EnvelopeDeserializer, MessageEnvelope}
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.{ByteArraySerializer, Serializer, StringDeserializer, StringSerializer}
 
@@ -29,13 +30,13 @@ import scala.concurrent.duration._
 
 object Kafka {
   private val consumerConfig = system.settings.config.getConfig("akka.kafka.consumer")
-  private val consumerSettings: ConsumerSettings[String, String] =
-    ConsumerSettings(consumerConfig, new StringDeserializer, new StringDeserializer)
+  private val consumerSettings: ConsumerSettings[String, MessageEnvelope] =
+    ConsumerSettings(consumerConfig, new StringDeserializer, EnvelopeDeserializer)
       .withBootstrapServers(Config.kafkaUrl)
       .withGroupId("message-signer")
       .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
 
-  val source: Source[ConsumerMessage.CommittableMessage[String, String], NotUsed] =
+  val source: Source[ConsumerMessage.CommittableMessage[String, MessageEnvelope], NotUsed] =
     RestartSource.withBackoff(
       minBackoff = 2.seconds,
       maxBackoff = 1.minute,

@@ -25,7 +25,8 @@ import akka.kafka.ProducerMessage.Message
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, RunnableGraph}
 import com.typesafe.scalalogging.StrictLogging
-import com.ubirch.kafkasupport.MessageEnvelope
+import com.ubirch.kafka.MessageEnvelope
+import com.ubirch.kafka._
 import com.ubirch.messagesigner.Kafka.StringOrByteArray
 import net.i2p.crypto.eddsa.{KeyPairGenerator => _, _}
 
@@ -40,15 +41,15 @@ package object messagesigner extends StrictLogging {
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   val messageSignerGraph: RunnableGraph[NotUsed] = Kafka.source via messageSignerFlow(Signer) to Kafka.sink
 
-  def messageSignerFlow(signer: Signer): Flow[CommittableMessage[String, String], Message[String, StringOrByteArray, CommittableOffset], NotUsed] =
-    Flow[CommittableMessage[String, String]].map { msg =>
-      val messageEnvelope = MessageEnvelope.fromRecord(msg.record)
+  def messageSignerFlow(signer: Signer): Flow[CommittableMessage[String, MessageEnvelope], Message[String, StringOrByteArray, CommittableOffset], NotUsed] =
+    Flow[CommittableMessage[String, MessageEnvelope]].map { msg =>
+      val record = msg.record
 
-      logger.debug(s"signing message: ${messageEnvelope.payload}")
+      logger.debug(s"signing message: ${record.value().ubirchPacket}")
 
-      val signedMessage = signer.sign(messageEnvelope)
+      val signedRecord = signer.sign(record)
 
-      val recordToSend = MessageEnvelope.toRecord(Config.outgoingTopic, msg.record.key(), signedMessage)
+      val recordToSend = signedRecord.toProducerRecord(Config.outgoingTopic)
       // ToDo BjB 24.09.18 : send to specific partition for completing http request
       Message[String, StringOrByteArray, CommittableOffset](
         recordToSend,

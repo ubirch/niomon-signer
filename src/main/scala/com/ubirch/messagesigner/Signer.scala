@@ -19,11 +19,13 @@ package com.ubirch.messagesigner
 import java.security.{MessageDigest, Signature}
 import java.util.UUID
 
-import com.ubirch.kafkasupport.MessageEnvelope
+import com.ubirch.kafka.MessageEnvelope
+import com.ubirch.kafka._
 import com.ubirch.messagesigner.Kafka.StringOrByteArray
 import com.ubirch.protocol.codec.{JSONProtocolDecoder, JSONProtocolEncoder, MsgPackProtocolEncoder}
 import com.ubirch.protocol.{ProtocolMessage, ProtocolSigner}
 import net.i2p.crypto.eddsa.{EdDSAEngine, EdDSAPrivateKey}
+import org.apache.kafka.clients.consumer.ConsumerRecord
 
 object Signer extends Signer(Keys.privateKey)
 
@@ -43,16 +45,14 @@ abstract class Signer(_privateKey: => EdDSAPrivateKey) {
     signature
   }
 
-  def sign(envelope: MessageEnvelope[String]): MessageEnvelope[StringOrByteArray] = {
-    val payload = JSONProtocolDecoder.getDecoder.decode(envelope.payload)
-    val (encoded, newContentType) = envelope.headers.get("Content-Type") match {
+  def sign(record: ConsumerRecord[String, MessageEnvelope]): ConsumerRecord[String, StringOrByteArray] = {
+    val payload = record.value().ubirchPacket
+    val (encoded, newContentType) = record.headersScala.get("Content-Type") match {
       case Some(ct@"application/json") => (StringOrByteArray(signAndEncodeJson(payload)), ct)
       case _ => (StringOrByteArray(signAndEncodeMsgPack(payload)), "application/octet-stream")
     }
 
-    val newHeaders = envelope.headers + ("Content-Type" -> newContentType)
-
-    MessageEnvelope(encoded, newHeaders)
+    record.copy(value = encoded).withExtraHeaders("Content-Type" -> newContentType)
   }
 
   private def signAndEncodeJson(payload: ProtocolMessage): String = {
