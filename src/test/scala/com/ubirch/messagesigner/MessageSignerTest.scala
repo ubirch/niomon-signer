@@ -86,9 +86,9 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   // scalastyle:off line.size.limit
   private val testMessages = List(
-    """{"ubirchPacket": {"version":19,"uuid":"7fb478b7-4aba-461f-bc50-faba6d754490","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"signed":"lhOwf7R4t0q6Rh+8UPq6bXVEkNoAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAq3NvbWUgYnl0ZXMh","signature":"2+E3O/lYub2LM5LbFE2qDMApCFLTLxKtYK6vE2bcT1k+EiUWHAXBFJztcMLryd5JK8dqQI0B2QFTETIFNQReDQ==","payload":"some bytes!"}, "context": {}}""",
-    """{"ubirchPacket": {"version":19,"uuid":"d21c174f-5419-49d4-a614-e95ca0ea862e","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"signed":"lhOw0hwXT1QZSdSmFOlcoOqGLtoAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsHNvbWUgb3RoZXIgc3R1ZmY=","signature":"r8+yz+omS35tBnAc6QTVAE5tbJcU4QSjf1mHgD/3f0eiWOfzGT0cKwmdJf/1W4LSr0pXZWaoPrF0oIxsW+fHDw==","payload":"some other stuff"}, "context": {}}""",
-    """{"ubirchPacket": {"version":19,"uuid":"670f05ec-c850-43a0-b6ba-225cac26e3b2","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":50,"signed":"lhOwZw8F7MhQQ6C2uiJcrCbjstoAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAyk3sqzQU5","signature":"wo8xg5z+j4EVKhDLYZS57HgxSoGwdxsPx6+7BG3HzNyqRy4j4vv+Jff+r3iLrQDxO6w6ffwKSS+RuwC7FxyKAQ==","payload":[123,42,1337]}, "context": {}}"""
+    """{"ubirchPacket": {"version":35,"uuid":"7fb478b7-4aba-461f-bc50-faba6d754490","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"payload":"some bytes!"}, "context": {}}""",
+    """{"ubirchPacket": {"version":35,"uuid":"d21c174f-5419-49d4-a614-e95ca0ea862e","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"payload":"some other stuff"}, "context": {}}""",
+    """{"ubirchPacket": {"version":35,"uuid":"670f05ec-c850-43a0-b6ba-225cac26e3b2","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":50,"payload":[123,42,1337]}, "context": {}}"""
   )
   // scalastyle:on line.size.limit
 
