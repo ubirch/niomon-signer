@@ -19,6 +19,7 @@ package com.ubirch.messagesigner
 import java.security.{MessageDigest, Signature}
 import java.util.UUID
 
+import com.typesafe.scalalogging.StrictLogging
 import com.ubirch.kafka.MessageEnvelope
 import com.ubirch.kafka._
 import com.ubirch.messagesigner.Kafka.StringOrByteArray
@@ -29,7 +30,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 
 object Signer extends Signer(Keys.privateKey)
 
-abstract class Signer(_privateKey: => EdDSAPrivateKey) {
+abstract class Signer(_privateKey: => EdDSAPrivateKey) extends StrictLogging {
   lazy private val privateKey = _privateKey
   private val signer: ProtocolSigner = (_: UUID, data: Array[Byte], offset: Int, len: Int) => {
     val sha512 = MessageDigest.getInstance("SHA-512")
@@ -56,10 +57,12 @@ abstract class Signer(_privateKey: => EdDSAPrivateKey) {
   }
 
   private def signAndEncodeJson(payload: ProtocolMessage): String = {
+    logger.debug("encoding with JSONProtocolEncoder")
     JSONProtocolEncoder.getEncoder.encode(payload, signer)
   }
 
   private def signAndEncodeMsgPack(payload: ProtocolMessage): Array[Byte] = {
+    logger.debug("encoding with MsgPackProtocolEncoder")
     MsgPackProtocolEncoder.getEncoder.encode(payload, signer)
   }
 }

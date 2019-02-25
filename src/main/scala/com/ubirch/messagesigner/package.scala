@@ -49,12 +49,17 @@ package object messagesigner extends StrictLogging {
 
       val signedRecord = signer.sign(record)
 
+      logger.debug(s"message successfully signed!")
+
       val recordToSend = signedRecord.toProducerRecord(Config.outgoingTopic)
       // ToDo BjB 24.09.18 : send to specific partition for completing http request
       Message[String, StringOrByteArray, CommittableOffset](
         recordToSend,
         msg.committableOffset
       )
+    }.mapError { case x: Exception =>
+      logger.error("unexpected error", x)
+      x
     }
 
 }
