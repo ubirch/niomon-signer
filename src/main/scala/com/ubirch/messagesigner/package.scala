@@ -22,12 +22,13 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.kafka.ConsumerMessage.{CommittableMessage, CommittableOffset}
 import akka.kafka.ProducerMessage.Message
-import akka.stream.ActorMaterializer
+import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import akka.stream.scaladsl.{Flow, RunnableGraph}
 import com.typesafe.scalalogging.StrictLogging
 import com.ubirch.kafka.MessageEnvelope
 import com.ubirch.kafka._
 import com.ubirch.messagesigner.Kafka.StringOrByteArray
+import com.ubirch.protocol.ProtocolException
 import net.i2p.crypto.eddsa.{KeyPairGenerator => _, _}
 
 import scala.concurrent.ExecutionContextExecutor
@@ -60,6 +61,12 @@ package object messagesigner extends StrictLogging {
     }.mapError { case x: Exception =>
       logger.error("unexpected error", x)
       x
-    }
+    }.withAttributes(ActorAttributes.supervisionStrategy {
+      // this happens when unexpected legacy packet arrives to be signed
+      // it shouldn't normally happen, because message-decoder upgrades old packets
+      // in the case it does happen, we drop the erroneous packet (it should be possible to recover it from the logs
+      case _: ProtocolException => Supervision.Resume
+      case _ => Supervision.Stop
+    })
 
 }
