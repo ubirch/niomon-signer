@@ -20,10 +20,9 @@ import java.security.{MessageDigest, Signature}
 import java.util.UUID
 
 import com.typesafe.scalalogging.StrictLogging
-import com.ubirch.kafka.MessageEnvelope
-import com.ubirch.kafka._
+import com.ubirch.kafka.{MessageEnvelope, _}
 import com.ubirch.messagesigner.Kafka.StringOrByteArray
-import com.ubirch.protocol.codec.{JSONProtocolDecoder, JSONProtocolEncoder, MsgPackProtocolEncoder}
+import com.ubirch.protocol.codec.{JSONProtocolEncoder, MsgPackProtocolEncoder}
 import com.ubirch.protocol.{ProtocolMessage, ProtocolSigner}
 import net.i2p.crypto.eddsa.{EdDSAEngine, EdDSAPrivateKey}
 import org.apache.kafka.clients.consumer.ConsumerRecord
