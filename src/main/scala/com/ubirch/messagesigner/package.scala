@@ -59,7 +59,7 @@ package object messagesigner extends StrictLogging {
         msg.committableOffset
       )
     }.mapError { case x: Exception =>
-      logger.error("unexpected error", x)
+      logger.error("unexpected error in the signer flow", x)
       x
     }.withAttributes(ActorAttributes.supervisionStrategy {
       // this happens when unexpected legacy packet arrives to be signed
