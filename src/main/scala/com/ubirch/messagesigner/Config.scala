@@ -26,7 +26,7 @@ object Config {
   private val conf = ConfigFactory.load
 
   val kafkaUrl: String = conf.getString("kafka.url")
-  val incomingTopics: List[String] = conf.getStringList("kafka.topic.incoming").asScala.toList
+  val incomingTopics: List[String] = List(conf.getString("kafka.topic.incoming")) // TODO: make this a bare string
   val outgoingTopic: String = conf.getString("kafka.topic.outgoing")
 
   val keyStoreFilename: Path = Paths.get(conf.getString("certificate.path"))
