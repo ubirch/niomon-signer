@@ -93,13 +93,7 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
   // scalastyle:on line.size.limit
 
   //noinspection NotImplementedCode
-  private val dummyCommitableOffset = new CommittableOffset {
-    override def partitionOffset: ConsumerMessage.PartitionOffset = ???
-
-    override def commitScaladsl(): Future[Done] = ???
-
-    override def commitJavadsl(): CompletionStage[Done] = ???
-  }
+  private val dummyCommittableOffset = null
 
   override protected def beforeAll(): Unit = {
     Security.addProvider(new EdDSASecurityProvider())
@@ -109,7 +103,7 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
   private def mkBinMessage(payload: String) = ConsumerMessage.CommittableMessage(
     record = new ConsumerRecord("topic", 0, 0, "key",
       EnvelopeDeserializer.deserialize(null, payload.getBytes(UTF_8))),
-    committableOffset = dummyCommitableOffset
+    committableOffset = dummyCommittableOffset
   )
 
   private def mkJsonMessage(payload: String) = {
@@ -117,7 +111,7 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
       EnvelopeDeserializer.deserialize(null, payload.getBytes(UTF_8)))
     record.headers().add("Content-Type", "application/json".getBytes(UTF_8))
 
-    ConsumerMessage.CommittableMessage(record, dummyCommitableOffset)
+    ConsumerMessage.CommittableMessage(record, dummyCommittableOffset)
   }
 
   private def getVerifier(kPair: KeyPair): ProtocolVerifier = (_: UUID, data: Array[Byte], offset: Int, len: Int, signature: Array[Byte]) => {
