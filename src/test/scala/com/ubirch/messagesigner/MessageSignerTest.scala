@@ -19,69 +19,70 @@ package com.ubirch.messagesigner
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security._
 import java.util.UUID
-import java.util.concurrent.CompletionStage
 
-import akka.Done
-import akka.kafka.ConsumerMessage
-import akka.kafka.ConsumerMessage.CommittableOffset
-import akka.stream.scaladsl.{Keep, Sink, Source}
-import com.ubirch.kafka.EnvelopeDeserializer
+import com.ubirch.kafka.{EnvelopeDeserializer, EnvelopeSerializer}
 import com.ubirch.protocol.ProtocolVerifier
 import com.ubirch.protocol.codec.{JSONProtocolDecoder, MsgPackProtocolDecoder}
 import net.i2p.crypto.eddsa.{KeyPairGenerator => _, _}
-import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import net.manub.embeddedkafka.EmbeddedKafka
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.json4s.jackson.JsonMethods.fromJsonNode
+import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
-import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
-
-class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
+//noinspection TypeAnnotation
+class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll with EmbeddedKafka {
+  implicit val byteArrayDeserializer = new ByteArrayDeserializer()
+  implicit val messageEnvelopeSerializer = EnvelopeSerializer
 
   "messageSignerFlow" should "sign binary messages with a private key" in {
-    val kPair = KeyPairGenerator.getInstance(EdDSAKey.KEY_ALGORITHM).generateKeyPair()
-    val signer = new Signer(kPair.getPrivate.asInstanceOf[EdDSAPrivateKey]) {}
-    val flow = messageSignerFlow(signer)
+    withRunningKafka {
+      val kPair = KeyPairGenerator.getInstance(EdDSAKey.KEY_ALGORITHM).generateKeyPair()
+      val signer = new Signer(kPair.getPrivate.asInstanceOf[EdDSAPrivateKey]) {}
+      val microservice = new MessageSignerMicroservice(_ => signer)
+      val control = microservice.run
 
-    val graph = Source[String](testMessages).map(mkBinMessage).via(flow).toMat(Sink.seq)(Keep.right)
-    val res = Await.result(graph.run(), 3.seconds)
+      testMessages.foreach(m => publishToKafka(mkBinMessage(m)))
 
-    val ver = getVerifier(kPair)
+      val res = consumeNumberMessagesFrom[Array[Byte]]("outgoing", testMessages.length)
 
-    val decoded = res.map { r =>
-      val v = r.record.value()
-      v.inner shouldBe an[Array[Byte]]
-      MsgPackProtocolDecoder.getDecoder.decode(v.inner.asInstanceOf[Array[Byte]], ver)
+      val ver = getVerifier(kPair)
+
+      val decoded = res.map(MsgPackProtocolDecoder.getDecoder.decode(_, ver))
+
+      val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
+        .map(_.ubirchPacket.getPayload)
+
+      val decodedPayloads = decoded.map(_.getPayload)
+      decodedPayloads should equal(originalPayloads)
+
+      control.drainAndShutdown()(microservice.system.dispatcher)
     }
-
-    val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
-      .map(_.ubirchPacket.getPayload)
-
-    val decodedPayloads = decoded.map(_.getPayload).toList
-    decodedPayloads should equal(originalPayloads)
   }
 
   it should "sign json messages with a private key" in {
-    val kPair = KeyPairGenerator.getInstance(EdDSAKey.KEY_ALGORITHM).generateKeyPair()
-    val signer = new Signer(kPair.getPrivate.asInstanceOf[EdDSAPrivateKey]) {}
-    val flow = messageSignerFlow(signer)
+    withRunningKafka {
+      val kPair = KeyPairGenerator.getInstance(EdDSAKey.KEY_ALGORITHM).generateKeyPair()
+      val signer = new Signer(kPair.getPrivate.asInstanceOf[EdDSAPrivateKey]) {}
+      val microservice = new MessageSignerMicroservice(_ => signer)
+      val control = microservice.run
 
-    val graph = Source[String](testMessages).map(mkJsonMessage).via(flow).toMat(Sink.seq)(Keep.right)
-    val res = Await.result(graph.run(), 3.seconds)
+      testMessages.foreach(m => publishToKafka(mkJsonMessage(m)))
 
-    val ver = getVerifier(kPair)
+      val res = consumeNumberStringMessagesFrom("outgoing", testMessages.length)
 
-    val decoded = res.map { r =>
-      val v = r.record.value()
-      v.inner shouldBe a[String]
-      JSONProtocolDecoder.getDecoder.decode(v.inner.asInstanceOf[String], ver)
+      val ver = getVerifier(kPair)
+
+      val decoded = res.map(JSONProtocolDecoder.getDecoder.decode(_, ver))
+
+      val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
+        .map(_.ubirchPacket.getPayload).map(fromJsonNode)
+
+      val decodedPayloads = decoded.map(_.getPayload).map(fromJsonNode)
+      decodedPayloads should equal(originalPayloads)
+
+      control.drainAndShutdown()(microservice.system.dispatcher)
     }
-
-    val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
-      .map(_.ubirchPacket.getPayload).map(fromJsonNode)
-
-    val decodedPayloads = decoded.map(_.getPayload).map(fromJsonNode).toList
-    decodedPayloads should equal (originalPayloads)
   }
 
   // scalastyle:off line.size.limit
@@ -92,26 +93,22 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll {
   )
   // scalastyle:on line.size.limit
 
-  //noinspection NotImplementedCode
-  private val dummyCommittableOffset = null
-
   override protected def beforeAll(): Unit = {
     Security.addProvider(new EdDSASecurityProvider())
     Security.addProvider(new EdDSACertificateProvider())
   }
 
-  private def mkBinMessage(payload: String) = ConsumerMessage.CommittableMessage(
-    record = new ConsumerRecord("topic", 0, 0, "key",
-      EnvelopeDeserializer.deserialize(null, payload.getBytes(UTF_8))),
-    committableOffset = dummyCommittableOffset
+  private def mkBinMessage(payload: String) = new ProducerRecord(
+    "incoming", "key",
+    EnvelopeDeserializer.deserialize(null, payload.getBytes(UTF_8))
   )
 
   private def mkJsonMessage(payload: String) = {
-    val record = new ConsumerRecord("topic", 0, 0, "key",
+    val record = new ProducerRecord("incoming", "key",
       EnvelopeDeserializer.deserialize(null, payload.getBytes(UTF_8)))
     record.headers().add("Content-Type", "application/json".getBytes(UTF_8))
 
-    ConsumerMessage.CommittableMessage(record, dummyCommittableOffset)
+    record
   }
 
   private def getVerifier(kPair: KeyPair): ProtocolVerifier = (_: UUID, data: Array[Byte], offset: Int, len: Int, signature: Array[Byte]) => {

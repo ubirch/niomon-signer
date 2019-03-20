@@ -17,8 +17,7 @@
 package com.ubirch.messagesigner
 
 object Main {
-
   def main(args: Array[String]) {
-    messageSignerGraph.run()
+    new MessageSignerMicroservice(c => new Signer(new Keys(c).privateKey)).runUntilDone
   }
 }

@@ -21,15 +21,12 @@ import java.util.UUID
 
 import com.typesafe.scalalogging.StrictLogging
 import com.ubirch.kafka.{MessageEnvelope, _}
-import com.ubirch.messagesigner.Kafka.StringOrByteArray
 import com.ubirch.protocol.codec.{JSONProtocolEncoder, MsgPackProtocolEncoder}
 import com.ubirch.protocol.{ProtocolMessage, ProtocolSigner}
 import net.i2p.crypto.eddsa.{EdDSAEngine, EdDSAPrivateKey}
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
-object Signer extends Signer(Keys.privateKey)
-
-abstract class Signer(_privateKey: => EdDSAPrivateKey) extends StrictLogging {
+class Signer(_privateKey: => EdDSAPrivateKey) extends StrictLogging {
   lazy private val privateKey = _privateKey
   private val signer: ProtocolSigner = (_: UUID, data: Array[Byte], offset: Int, len: Int) => {
     val sha512 = MessageDigest.getInstance("SHA-512")
