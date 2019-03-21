@@ -16,8 +16,15 @@
 
 package com.ubirch.messagesigner
 
+import java.security.Security
+
+import net.i2p.crypto.eddsa.EdDSASecurityProvider
+
 object Main {
   def main(args: Array[String]) {
+    Security.addProvider(new EdDSASecurityProvider())
+    Security.addProvider(new EdDSACertificateProvider())
+
     new MessageSignerMicroservice(c => new Signer(new Keys(c).privateKey)).runUntilDone
   }
 }
