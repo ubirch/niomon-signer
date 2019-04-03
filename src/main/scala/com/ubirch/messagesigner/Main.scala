@@ -25,6 +25,6 @@ object Main {
     Security.addProvider(new EdDSASecurityProvider())
     Security.addProvider(new EdDSACertificateProvider())
 
-    new MessageSignerMicroservice(c => new Signer(new Keys(c).privateKey)).runUntilDone
+    new MessageSignerMicroservice(c => new Signer(new Keys(c).privateKey)).runUntilDoneAndShutdownProcess
   }
 }
