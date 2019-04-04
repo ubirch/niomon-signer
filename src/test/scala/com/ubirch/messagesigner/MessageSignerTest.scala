@@ -67,6 +67,25 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll wi
       val microservice = new MessageSignerMicroservice(_ => signer)
       val control = microservice.run
 
+      val testMessages = List("foo", "bar", "baz")
+
+      testMessages.foreach(m => publishStringMessageToKafka("incoming", m))
+
+      val res = consumeNumberStringMessagesFrom("outgoing", testMessages.length)
+
+      res should equal(testMessages)
+
+      control.drainAndShutdown()(microservice.system.dispatcher)
+    }
+  }
+
+  it should "let non-MessageEnvelope messages through without signing" in {
+    withRunningKafka {
+      val kPair = KeyPairGenerator.getInstance(EdDSAKey.KEY_ALGORITHM).generateKeyPair()
+      val signer = new Signer(kPair.getPrivate.asInstanceOf[EdDSAPrivateKey]) {}
+      val microservice = new MessageSignerMicroservice(_ => signer)
+      val control = microservice.run
+
       testMessages.foreach(m => publishToKafka(mkJsonMessage(m)))
 
       val res = consumeNumberStringMessagesFrom("outgoing", testMessages.length)
