@@ -18,7 +18,7 @@ package com.ubirch.messagesigner
 
 import java.util
 
-import com.niomon.util.KafkaPayload
+import com.ubirch.niomon.util.KafkaPayload
 import org.apache.kafka.common.serialization._
 
 // TODO: use union type when/if dotty/scala3 ships
