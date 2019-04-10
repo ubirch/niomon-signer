@@ -7,6 +7,8 @@ import com.ubirch.kafka.MessageEnvelope
 import com.ubirch.niomon.base.NioMicroservice
 import com.ubirch.kafka._
 import com.ubirch.messagesigner.MessageSignerMicroservice.MessageEnvelopeOrString
+import com.ubirch.messagesigner.MessageSignerMicroservice.MessageEnvelopeOrString._
+import com.ubirch.messagesigner.StringOrByteArray._
 import com.ubirch.niomon.util.KafkaPayload
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -18,10 +20,10 @@ class MessageSignerMicroservice(signerFactory: Config => Signer) extends NioMicr
   val signer: Signer = signerFactory(config)
 
   override def processRecord(record: ConsumerRecord[String, MessageEnvelopeOrString]): ProducerRecord[String, StringOrByteArray] = {
-    record.value().inner match {
-      case s: String =>
+    record.value() match {
+      case Right(s) =>
         record.toProducerRecord(topic = outputTopics.values.head, value = StringOrByteArray(s))
-      case me: MessageEnvelope =>
+      case Left(me) =>
         val messageEnvelopeRecord = record.copy[String, MessageEnvelope](value = me)
         logger.debug(s"signing message: ${messageEnvelopeRecord.value().ubirchPacket}")
         val signedRecord = signer.sign(messageEnvelopeRecord)
@@ -33,12 +35,12 @@ class MessageSignerMicroservice(signerFactory: Config => Signer) extends NioMicr
 
 object MessageSignerMicroservice {
 
-  class MessageEnvelopeOrString private(val inner: Any)
+  type MessageEnvelopeOrString = Either[MessageEnvelope, String]
 
   object MessageEnvelopeOrString {
-    def apply(inner: MessageEnvelope): MessageEnvelopeOrString = new MessageEnvelopeOrString(inner)
+    def apply(inner: MessageEnvelope): MessageEnvelopeOrString = Left(inner)
 
-    def apply(inner: String): MessageEnvelopeOrString = new MessageEnvelopeOrString(inner)
+    def apply(inner: String): MessageEnvelopeOrString = Right(inner)
 
     implicit val MessageEnvelopeOrStringKafkaPayload: KafkaPayload[MessageEnvelopeOrString] =
       new KafkaPayload[MessageEnvelopeOrString] {
@@ -72,11 +74,9 @@ object MessageSignerMicroservice {
           }
 
           override def serialize(topic: String, data: MessageEnvelopeOrString): Array[Byte] = {
-            data.inner match {
-              case me: MessageEnvelope => messageEnvelopeSerializer.serialize(topic, me)
-              case s: String => stringSerializer.serialize(topic, s)
-              case other =>
-                throw new IllegalArgumentException(s"unsupported data type: ${other.getClass.getSimpleName}")
+            data match {
+              case Left(me) => messageEnvelopeSerializer.serialize(topic, me)
+              case Right(s) => stringSerializer.serialize(topic, s)
             }
           }
 

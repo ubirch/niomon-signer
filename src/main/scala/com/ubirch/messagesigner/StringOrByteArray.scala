@@ -21,13 +21,12 @@ import java.util
 import com.ubirch.niomon.util.KafkaPayload
 import org.apache.kafka.common.serialization._
 
-// TODO: use union type when/if dotty/scala3 ships
-class StringOrByteArray private(val inner: Any) // extends AnyVal // uncommenting this causes compilation error
-
 object StringOrByteArray {
-  def apply(inner: String): StringOrByteArray = new StringOrByteArray(inner)
+  type StringOrByteArray = Either[String, Array[Byte]]
 
-  def apply(inner: Array[Byte]): StringOrByteArray = new StringOrByteArray(inner)
+  def apply(inner: String): StringOrByteArray = Left(inner)
+
+  def apply(inner: Array[Byte]): StringOrByteArray = Right(inner)
 
   implicit val stringOrByteArrayKafkaPayload: KafkaPayload[StringOrByteArray] = new KafkaPayload[StringOrByteArray] {
     override def deserializer: Deserializer[StringOrByteArray] = new Deserializer[StringOrByteArray] {
@@ -49,12 +48,9 @@ object StringOrByteArray {
     }
 
     override def serialize(topic: String, data: StringOrByteArray): Array[Byte] = {
-      data.inner match {
-        case s: String => stringSerializer.serialize(topic, s)
-        case ba: Array[Byte] => byteArraySerializer.serialize(topic, ba)
-        case x: Any => throw new IllegalArgumentException(
-          s"StringOrByteArraySerializer cannot serialize value of type ${x.getClass.getCanonicalName}"
-        )
+      data match {
+        case Left(s) => stringSerializer.serialize(topic, s)
+        case Right(ba) => byteArraySerializer.serialize(topic, ba)
       }
     }
 
