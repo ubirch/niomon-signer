@@ -21,6 +21,7 @@ import java.util.UUID
 
 import com.typesafe.scalalogging.StrictLogging
 import com.ubirch.kafka.{MessageEnvelope, _}
+import com.ubirch.messagesigner.StringOrByteArray.StringOrByteArray
 import com.ubirch.protocol.codec.{JSONProtocolEncoder, MsgPackProtocolEncoder}
 import com.ubirch.protocol.{ProtocolMessage, ProtocolSigner}
 import net.i2p.crypto.eddsa.{EdDSAEngine, EdDSAPrivateKey}
