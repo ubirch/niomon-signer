@@ -15,6 +15,6 @@ class MessageSignerMicroservice(signerFactory: Config => Signer) extends NioMicr
     logger.debug(s"signing message: ${record.value().ubirchPacket}")
     val signedRecord = signer.sign(record)
     logger.debug(s"message successfully signed!")
-    signedRecord.toProducerRecord(outputTopics.values.head)
+    signedRecord.toProducerRecord(onlyOutputTopic)
   }
 }
