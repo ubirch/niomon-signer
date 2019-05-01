@@ -20,10 +20,11 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.security._
 import java.util.UUID
 
+import com.ubirch.crypto.utils.Curve
+import com.ubirch.crypto.{GeneratorKeyFactory, PrivKey}
 import com.ubirch.kafka.{EnvelopeDeserializer, EnvelopeSerializer}
 import com.ubirch.protocol.ProtocolVerifier
 import com.ubirch.protocol.codec.{JSONProtocolDecoder, MsgPackProtocolDecoder}
-import net.i2p.crypto.eddsa.{KeyPairGenerator => _, _}
 import net.manub.embeddedkafka.EmbeddedKafka
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
@@ -37,8 +38,8 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll wi
 
   "messageSignerFlow" should "sign binary messages with a private key" in {
     withRunningKafka {
-      val kPair = KeyPairGenerator.getInstance(EdDSAKey.KEY_ALGORITHM).generateKeyPair()
-      val signer = new Signer(kPair.getPrivate.asInstanceOf[EdDSAPrivateKey]) {}
+      val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
+      val signer = new Signer(privKey) {}
       val microservice = new MessageSignerMicroservice(_ => signer)
       val control = microservice.run
 
@@ -46,7 +47,7 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll wi
 
       val res = consumeNumberMessagesFrom[Array[Byte]]("outgoing", testMessages.length)
 
-      val ver = getVerifier(kPair)
+      val ver = getVerifier(privKey)
 
       val decoded = res.map(MsgPackProtocolDecoder.getDecoder.decode(_, ver))
 
@@ -62,8 +63,8 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll wi
 
   it should "sign json messages with a private key" in {
     withRunningKafka {
-      val kPair = KeyPairGenerator.getInstance(EdDSAKey.KEY_ALGORITHM).generateKeyPair()
-      val signer = new Signer(kPair.getPrivate.asInstanceOf[EdDSAPrivateKey]) {}
+      val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
+      val signer = new Signer(privKey) {}
       val microservice = new MessageSignerMicroservice(_ => signer)
       val control = microservice.run
 
@@ -71,7 +72,7 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll wi
 
       val res = consumeNumberStringMessagesFrom("outgoing", testMessages.length)
 
-      val ver = getVerifier(kPair)
+      val ver = getVerifier(privKey)
 
       val decoded = res.map(JSONProtocolDecoder.getDecoder.decode(_, ver))
 
@@ -93,11 +94,6 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll wi
   )
   // scalastyle:on line.size.limit
 
-  override protected def beforeAll(): Unit = {
-    Security.addProvider(new EdDSASecurityProvider())
-    Security.addProvider(new EdDSACertificateProvider())
-  }
-
   private def mkBinMessage(payload: String) = new ProducerRecord(
     "incoming", "key",
     EnvelopeDeserializer.deserialize(null, payload.getBytes(UTF_8))
@@ -111,16 +107,9 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll wi
     record
   }
 
-  private def getVerifier(kPair: KeyPair): ProtocolVerifier = (_: UUID, data: Array[Byte], offset: Int, len: Int, signature: Array[Byte]) => {
+  private def getVerifier(privKey: PrivKey): ProtocolVerifier = (_: UUID, data: Array[Byte], offset: Int, len: Int, signature: Array[Byte]) => {
     val sha512 = MessageDigest.getInstance("SHA-512")
     sha512.update(data, offset, len)
-    val hash = sha512.digest()
-
-    val sig = Signature.getInstance(EdDSAEngine.SIGNATURE_ALGORITHM)
-    sig.initVerify(new EdDSACertificate(kPair.getPublic.asInstanceOf[EdDSAPublicKey]))
-    sig.setParameter(EdDSAEngine.ONE_SHOT_MODE)
-    sig.update(hash)
-
-    sig.verify(signature)
+    privKey.verify(sha512.digest(), signature)
   }
 }

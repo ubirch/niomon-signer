@@ -16,43 +16,49 @@
 
 package com.ubirch.messagesigner
 
-import java.io.{FileInputStream, FileOutputStream}
+import java.io.{FileInputStream, FileNotFoundException, FileOutputStream}
 import java.nio.file.{Files, Paths}
-import java.security.KeyStore.{PrivateKeyEntry, TrustedCertificateEntry}
-import java.security.{KeyPairGenerator, KeyStore}
+import java.security.KeyStore
+import java.security.KeyStore.PrivateKeyEntry
 
 import com.typesafe.config.Config
-import net.i2p.crypto.eddsa.{EdDSAKey, EdDSAPrivateKey, EdDSAPublicKey}
+import com.typesafe.scalalogging.StrictLogging
+import com.ubirch.crypto.utils.Curve
+import com.ubirch.crypto.{GeneratorKeyFactory, PrivKey}
 
-class Keys(conf: Config) {
+class Keys(conf: Config) extends StrictLogging {
   private val pass = conf.getString("certificate.password").toCharArray
   private val entryAlias = conf.getString("certificate.entryAlias")
   private val privateKeyAlias = "pke_" + entryAlias
 
-  lazy val privateKey: EdDSAPrivateKey = keyStore.getKey(privateKeyAlias, pass)
-    .asInstanceOf[EdDSAPrivateKey]
-  lazy private val keyStore = {
+  lazy val privateKey: PrivKey = keyStore.getKey(privateKeyAlias, pass).asInstanceOf[PrivKey]
+
+  lazy private val keyStore: KeyStore = {
     val ks = KeyStore.getInstance("jks")
-    var ksFileInputStream: FileInputStream = null // scalastyle:off null
     val fName = Paths.get(conf.getString("certificate.path"))
-    if (Files.exists(fName)) ksFileInputStream = new FileInputStream(fName.toFile)
-    ks.load(ksFileInputStream, pass)
 
-    // generate the key pair if not present
-    if (!ks.containsAlias(entryAlias)) {
-      val kPair = KeyPairGenerator.getInstance(EdDSAKey.KEY_ALGORITHM).generateKeyPair()
-      val cert = new EdDSACertificate(kPair.getPublic.asInstanceOf[EdDSAPublicKey])
+    if (Files.exists(fName)) {
+      var ksFileInputStream: FileInputStream = new FileInputStream(fName.toFile)
+      ks.load(ksFileInputStream, pass)
 
-      ks.setEntry(entryAlias, new TrustedCertificateEntry(cert), null) // scalastyle:off null
-      ks.setEntry(
-        privateKeyAlias,
-        new PrivateKeyEntry(kPair.getPrivate, Array(cert)),
-        new KeyStore.PasswordProtection(pass)
-      )
+      // generate the key pair if not present
+      if (!ks.containsAlias(entryAlias)) {
+        logger.warn(s"no private key found: '$entryAlias, generating new private key")
 
-      val fos = new FileOutputStream(fName.toFile)
-      ks.store(fos, pass)
-      fos.close()
+        val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
+        ks.setEntry(
+          privateKeyAlias,
+          new PrivateKeyEntry(privKey.getPrivateKey, Array()),
+          new KeyStore.PasswordProtection(pass)
+        )
+
+        val fos = new FileOutputStream(fName.toFile)
+        ks.store(fos, pass)
+        fos.close()
+      }
+    } else {
+      logger.error(s"key store not found: $fName")
+      throw new FileNotFoundException(s"key store not found: $fName")
     }
 
     ks

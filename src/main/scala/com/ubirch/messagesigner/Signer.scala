@@ -16,29 +16,28 @@
 
 package com.ubirch.messagesigner
 
-import java.security.{MessageDigest, Signature}
+import java.security.MessageDigest
 import java.util.UUID
 
 import com.typesafe.scalalogging.StrictLogging
+import com.ubirch.crypto.PrivKey
 import com.ubirch.kafka.{MessageEnvelope, _}
 import com.ubirch.messagesigner.StringOrByteArray.StringOrByteArray
 import com.ubirch.protocol.codec.{JSONProtocolEncoder, MsgPackProtocolEncoder}
 import com.ubirch.protocol.{ProtocolMessage, ProtocolSigner}
-import net.i2p.crypto.eddsa.{EdDSAEngine, EdDSAPrivateKey}
+import org.apache.commons.codec.binary.Hex
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
-class Signer(_privateKey: => EdDSAPrivateKey) extends StrictLogging {
+class Signer(_privateKey: => PrivKey) extends StrictLogging {
   lazy private val privateKey = _privateKey
+
   private val signer: ProtocolSigner = (_: UUID, data: Array[Byte], offset: Int, len: Int) => {
     val sha512 = MessageDigest.getInstance("SHA-512")
     sha512.update(data, offset, len)
-    val hash = sha512.digest()
+    val bytesToSign = sha512.digest()
 
-    val sig = Signature.getInstance(EdDSAEngine.SIGNATURE_ALGORITHM)
-    sig.initSign(privateKey)
-    sig.setParameter(EdDSAEngine.ONE_SHOT_MODE)
-    sig.update(hash)
-    val signature = sig.sign()
+    val signature: Array[Byte] = privateKey.sign(bytesToSign)
+    logger.debug(s"signed ${data.length} bytes: ${Hex.encodeHexString(bytesToSign)}")
 
     signature
   }
