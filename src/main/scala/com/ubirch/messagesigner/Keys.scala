@@ -16,7 +16,7 @@
 
 package com.ubirch.messagesigner
 
-import java.io.{FileInputStream, FileNotFoundException, FileOutputStream}
+import java.io.{FileInputStream, FileOutputStream}
 import java.nio.file.{Files, Paths}
 import java.security.KeyStore
 import java.security.KeyStore.PrivateKeyEntry
@@ -40,25 +40,25 @@ class Keys(conf: Config) extends StrictLogging {
     if (Files.exists(fName)) {
       var ksFileInputStream: FileInputStream = new FileInputStream(fName.toFile)
       ks.load(ksFileInputStream, pass)
-
-      // generate the key pair if not present
-      if (!ks.containsAlias(entryAlias)) {
-        logger.warn(s"no private key found: '$entryAlias, generating new private key")
-
-        val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
-        ks.setEntry(
-          privateKeyAlias,
-          new PrivateKeyEntry(privKey.getPrivateKey, Array()),
-          new KeyStore.PasswordProtection(pass)
-        )
-
-        val fos = new FileOutputStream(fName.toFile)
-        ks.store(fos, pass)
-        fos.close()
-      }
     } else {
       logger.error(s"key store not found: $fName")
-      throw new FileNotFoundException(s"key store not found: $fName")
+      //throw new FileNotFoundException(s"key store not found: $fName")
+    }
+
+    // generate the key pair if not present
+    if (!ks.containsAlias(entryAlias)) {
+      logger.warn(s"no private key found: '$entryAlias, generating new private key")
+
+      val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
+      ks.setEntry(
+        privateKeyAlias,
+        new PrivateKeyEntry(privKey.getPrivateKey, Array()),
+        new KeyStore.PasswordProtection(pass)
+      )
+
+      val fos = new FileOutputStream(fName.toFile)
+      ks.store(fos, pass)
+      fos.close()
     }
 
     ks
