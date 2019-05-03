@@ -22,13 +22,13 @@ import com.ubirch.crypto.utils.Curve
 object Main {
   def main(args: Array[String]) {
     new MessageSignerMicroservice(c => {
-      val algorithm = c.getString("signer.key.algorithm") match {
+      val algorithm = c.getString("private-key.algorithm") match {
         case "Ed25519" => Curve.Ed25519
         case "ECDSA" => Curve.PRIME256V1
         case a =>
           throw new IllegalArgumentException(s"unknown private key algorithm: $a")
       }
-      new Signer(GeneratorKeyFactory.getPrivKey(c.getString("signer.key.bytes"), algorithm))
+      new Signer(GeneratorKeyFactory.getPrivKey(c.getString("private-key.bytes"), algorithm))
     }).runUntilDoneAndShutdownProcess
   }
 }
