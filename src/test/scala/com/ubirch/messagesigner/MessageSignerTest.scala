@@ -16,35 +16,18 @@
 
 package com.ubirch.messagesigner
 
-import java.io.{File, FileOutputStream}
-import java.math.BigInteger
 import java.nio.charset.StandardCharsets.UTF_8
-import java.security.KeyStore.PrivateKeyEntry
 import java.security._
-import java.time.Instant
-import java.time.temporal.ChronoUnit
-import java.util.{Date, UUID}
+import java.util.UUID
 
-import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
 import com.ubirch.crypto.utils.Curve
 import com.ubirch.crypto.{GeneratorKeyFactory, PrivKey}
 import com.ubirch.kafka.{EnvelopeDeserializer, EnvelopeSerializer}
-import com.ubirch.messagesigner.Keys.PublicKeyBasedCertificate
 import com.ubirch.protocol.ProtocolVerifier
 import com.ubirch.protocol.codec.{JSONProtocolDecoder, MsgPackProtocolDecoder}
 import net.manub.embeddedkafka.EmbeddedKafka
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.bouncycastle.asn1.x500.X500Name
-import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
-import org.bouncycastle.asn1.x9.X9ObjectIdentifiers
-import org.bouncycastle.cert.X509v1CertificateBuilder
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
-import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters
-import org.bouncycastle.crypto.util.{PrivateKeyFactory, SubjectPublicKeyInfoFactory}
-import org.bouncycastle.jcajce.provider.asymmetric.edec.BCEdDSAPublicKey
-import org.bouncycastle.operator.{DefaultDigestAlgorithmIdentifierFinder, DefaultSignatureAlgorithmIdentifierFinder}
-import org.bouncycastle.operator.bc.BcECContentSignerBuilder
 import org.json4s.jackson.JsonMethods.fromJsonNode
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
@@ -101,19 +84,6 @@ class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll wi
 
       control.drainAndShutdown()(microservice.system.dispatcher)
     }
-  }
-
-  "PubKeyBasedCertificate" should "be able to be stored and retrieved from a keystore" in {
-    val tmpFile = File.createTempFile("test", ".jks")
-    tmpFile.delete()
-
-    val c = ConfigFactory.empty()
-      .withValue("certificate.password", ConfigValueFactory.fromAnyRef("myStrongPass"))
-      .withValue("certificate.entryAlias", ConfigValueFactory.fromAnyRef("alias"))
-      .withValue("certificate.path", ConfigValueFactory.fromAnyRef(tmpFile.getPath))
-
-    new Keys(c).privateKey
-    0
   }
 
   // scalastyle:off line.size.limit

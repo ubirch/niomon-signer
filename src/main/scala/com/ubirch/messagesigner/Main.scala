@@ -16,8 +16,19 @@
 
 package com.ubirch.messagesigner
 
+import com.ubirch.crypto.GeneratorKeyFactory
+import com.ubirch.crypto.utils.Curve
+
 object Main {
   def main(args: Array[String]) {
-    new MessageSignerMicroservice(c => new Signer(new Keys(c).privateKey)).runUntilDoneAndShutdownProcess
+    new MessageSignerMicroservice(c => {
+      val algorithm = c.getString("server.key.algorithm") match {
+        case "Ed25519" => Curve.Ed25519
+        case "ECDSA" => Curve.PRIME256V1
+        case a =>
+          throw new IllegalArgumentException(s"unknown private key algorithm: $a")
+      }
+      new Signer(GeneratorKeyFactory.getPrivKey(c.getString("server.key"), algorithm))
+    }).runUntilDoneAndShutdownProcess
   }
 }
