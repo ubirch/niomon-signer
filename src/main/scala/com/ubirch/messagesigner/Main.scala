@@ -16,19 +16,40 @@
 
 package com.ubirch.messagesigner
 
+import com.typesafe.scalalogging.StrictLogging
 import com.ubirch.crypto.GeneratorKeyFactory
 import com.ubirch.crypto.utils.Curve
 
-object Main {
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+
+object Main extends StrictLogging {
   def main(args: Array[String]) {
-    new MessageSignerMicroservice(c => {
-      val algorithm = c.getString("private-key.algorithm") match {
-        case "Ed25519" => Curve.Ed25519
-        case "ECDSA" => Curve.PRIME256V1
-        case a =>
-          throw new IllegalArgumentException(s"unknown private key algorithm: $a")
-      }
-      new Signer(GeneratorKeyFactory.getPrivKey(c.getString("private-key.bytes"), algorithm))
-    }).runUntilDoneAndShutdownProcess
+    try {
+      Await.result(
+        new MessageSignerMicroservice(c => {
+          val rawAlg = c.getString("private-key.algorithm")
+          val rawKey = c.getString("private-key.bytes").substring(0, 64)
+
+          logger.debug(s"[rawAlg=$rawAlg]\n[rawKey=$rawKey]")
+
+          val algorithm = rawAlg match {
+            case "Ed25519" => Curve.Ed25519
+            case "ECDSA" => Curve.PRIME256V1
+            case a =>
+              throw new IllegalArgumentException(s"unknown private key algorithm: $a")
+          }
+
+          new Signer(GeneratorKeyFactory.getPrivKey(rawKey, algorithm))
+        }).runUntilDoneAndShutdownProcess,
+        Duration.Inf
+      )
+    } catch {
+      case e: Exception =>
+        logger.error("Main threw", e)
+        System.exit(1)
+    }
+    logger.warn("MessageSigner stopped")
+    System.exit(0)
   }
 }
