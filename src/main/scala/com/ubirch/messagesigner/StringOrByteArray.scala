@@ -16,49 +16,15 @@
 
 package com.ubirch.messagesigner
 
-import java.util
-
 import com.ubirch.niomon.util.KafkaPayload
-import org.apache.kafka.common.serialization._
 
 object StringOrByteArray {
-  type StringOrByteArray = Either[String, Array[Byte]]
+  type StringOrByteArray = Either[Array[Byte], String]
 
-  def apply(inner: String): StringOrByteArray = Left(inner)
+  def apply(inner: String): StringOrByteArray = Right(inner)
 
-  def apply(inner: Array[Byte]): StringOrByteArray = Right(inner)
+  def apply(inner: Array[Byte]): StringOrByteArray = Left(inner)
 
-  implicit val stringOrByteArrayKafkaPayload: KafkaPayload[StringOrByteArray] = new KafkaPayload[StringOrByteArray] {
-    override def deserializer: Deserializer[StringOrByteArray] = new Deserializer[StringOrByteArray] {
-      override def deserialize(topic: String, data: Array[Byte]): StringOrByteArray = StringOrByteArray(data)
-      override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
-      override def close(): Unit = {}
-    }
-
-    override def serializer: Serializer[StringOrByteArray] = new StringOrByteArraySerializer
-  }
-
-  class StringOrByteArraySerializer extends Serializer[StringOrByteArray] {
-    val stringSerializer = new StringSerializer
-    val byteArraySerializer = new ByteArraySerializer
-
-    override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {
-      stringSerializer.configure(configs, isKey)
-      byteArraySerializer.configure(configs, isKey)
-    }
-
-    override def serialize(topic: String, data: StringOrByteArray): Array[Byte] = {
-      data match {
-        case Left(s) => stringSerializer.serialize(topic, s)
-        case Right(ba) => byteArraySerializer.serialize(topic, ba)
-      }
-    }
-
-    override def close(): Unit = {
-      stringSerializer.close()
-      byteArraySerializer.close()
-    }
-  }
-
+  implicit val stringOrByteArrayKafkaPayload: KafkaPayload[StringOrByteArray] = KafkaPayload.tryBothEitherKafkaPayload
 }
 
