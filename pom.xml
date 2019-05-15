@@ -291,10 +291,10 @@
                 </executions>
                 <configuration>
                     <configLocation>
-                        https://raw.githubusercontent.com/duraspace/codestyle/master/src/main/resources/duraspace-checkstyle/checkstyle.xml
+                        https://raw.githubusercontent.com/ubirch/ubirch-codestyle/master/ubirch-checkstyle.xml
                     </configLocation>
                     <suppressionsLocation>
-                        https://raw.githubusercontent.com/duraspace/codestyle/master/src/main/resources/duraspace-checkstyle/checkstyle-suppressions.xml
+                        https://raw.githubusercontent.com/ubirch/ubirch-codestyle/master/ubirch-checkstyle-suppression.xml
                     </suppressionsLocation>
                     <encoding>UTF-8</encoding>
                     <consoleOutput>true</consoleOutput>
