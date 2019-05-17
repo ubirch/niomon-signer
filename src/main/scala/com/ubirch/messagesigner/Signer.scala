@@ -17,7 +17,7 @@
 package com.ubirch.messagesigner
 
 import java.security.MessageDigest
-import java.util.UUID
+import java.util.{Base64, UUID}
 
 import com.typesafe.scalalogging.StrictLogging
 import com.ubirch.crypto.PrivKey
@@ -25,7 +25,6 @@ import com.ubirch.kafka.{MessageEnvelope, _}
 import com.ubirch.messagesigner.StringOrByteArray.StringOrByteArray
 import com.ubirch.protocol.codec.{JSONProtocolEncoder, MsgPackProtocolEncoder}
 import com.ubirch.protocol.{ProtocolMessage, ProtocolSigner}
-import org.apache.commons.codec.binary.Hex
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
 class Signer(_privateKey: => PrivKey) extends StrictLogging {
@@ -37,7 +36,7 @@ class Signer(_privateKey: => PrivKey) extends StrictLogging {
     val bytesToSign = sha512.digest()
 
     val signature: Array[Byte] = privateKey.sign(bytesToSign)
-    logger.debug(s"signed ${data.length} bytes: ${Hex.encodeHexString(bytesToSign)}")
+    logger.debug(s"signed ${data.length} bytes: ${Base64.getEncoder.encodeToString(bytesToSign)}")
 
     signature
   }

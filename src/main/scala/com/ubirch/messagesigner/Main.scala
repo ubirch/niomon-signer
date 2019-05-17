@@ -24,9 +24,9 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 
 object Main extends StrictLogging {
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     try {
-      Await.result(
+      val _ = Await.result(
         new MessageSignerMicroservice(c => {
           val rawAlg = c.getString("private-key.algorithm")
           val rawKey = c.getString("private-key.bytes").substring(0, 64)
