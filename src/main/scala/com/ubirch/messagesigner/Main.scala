@@ -19,6 +19,8 @@ package com.ubirch.messagesigner
 import com.typesafe.scalalogging.StrictLogging
 import com.ubirch.crypto.GeneratorKeyFactory
 import com.ubirch.crypto.utils.Curve
+import com.ubirch.niomon.base.NioMicroserviceLive
+import com.ubirch.messagesigner.StringOrByteArray._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -26,8 +28,8 @@ import scala.concurrent.duration.Duration
 object Main extends StrictLogging {
   def main(args: Array[String]): Unit = {
     try {
-      val _ = Await.result(
-        new MessageSignerMicroservice(c => {
+      Await.result(
+        NioMicroserviceLive("message-signer", MessageSignerMicroservice(c => {
           val rawAlg = c.getString("private-key.algorithm")
           val rawKey = c.getString("private-key.bytes").substring(0, 64)
 
@@ -41,7 +43,7 @@ object Main extends StrictLogging {
           }
 
           new Signer(GeneratorKeyFactory.getPrivKey(rawKey, algorithm))
-        }).runUntilDoneAndShutdownProcess,
+        })).runUntilDoneAndShutdownProcess,
         Duration.Inf
       )
     } catch {
@@ -49,7 +51,5 @@ object Main extends StrictLogging {
         logger.error("Main threw", e)
         System.exit(1)
     }
-    logger.warn("MessageSigner stopped")
-    System.exit(0)
   }
 }

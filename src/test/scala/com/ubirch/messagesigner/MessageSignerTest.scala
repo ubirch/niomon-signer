@@ -20,71 +20,70 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.security._
 import java.util.UUID
 
+import com.typesafe.config.Config
 import com.ubirch.crypto.utils.Curve
 import com.ubirch.crypto.{GeneratorKeyFactory, PrivKey}
 import com.ubirch.kafka.{EnvelopeDeserializer, EnvelopeSerializer}
+import com.ubirch.niomon.base.NioMicroserviceMock
 import com.ubirch.protocol.ProtocolVerifier
 import com.ubirch.protocol.codec.{JSONProtocolDecoder, MsgPackProtocolDecoder}
-import net.manub.embeddedkafka.EmbeddedKafka
+import com.ubirch.messagesigner.StringOrByteArray._
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.json4s.jackson.JsonMethods.fromJsonNode
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.{FlatSpec, Matchers}
 
 //noinspection TypeAnnotation
-class MessageSignerTest extends FlatSpec with Matchers with BeforeAndAfterAll with EmbeddedKafka {
+class MessageSignerTest extends FlatSpec with Matchers {
   implicit val byteArrayDeserializer = new ByteArrayDeserializer()
   implicit val messageEnvelopeSerializer = EnvelopeSerializer
 
   "messageSignerFlow" should "sign binary messages with a private key" in {
-    withRunningKafka {
-      val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
-      val signer = new Signer(privKey) {}
-      val microservice = new MessageSignerMicroservice(_ => signer)
-      val control = microservice.run
+    val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
+    val signer = new Signer(privKey) {}
+    val microservice = messageSignerMicroservice(_ => signer)
+    microservice.outputTopics = Map("default" -> "outgoing")
+    import microservice.kafkaMocks._
 
-      testMessages.foreach(m => publishToKafka(mkBinMessage(m)))
+    testMessages.foreach(m => publishToKafka(mkBinMessage(m)))
 
-      val res = consumeNumberMessagesFrom[Array[Byte]]("outgoing", testMessages.length)
+    val res = consumeNumberMessagesFrom[Array[Byte]]("outgoing", testMessages.length)
 
-      val ver = getVerifier(privKey)
+    val ver = getVerifier(privKey)
 
-      val decoded = res.map(MsgPackProtocolDecoder.getDecoder.decode(_, ver))
+    val decoded = res.map(MsgPackProtocolDecoder.getDecoder.decode(_, ver))
 
-      val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
-        .map(_.ubirchPacket.getPayload)
+    val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
+      .map(_.ubirchPacket.getPayload)
 
-      val decodedPayloads = decoded.map(_.getPayload)
-      decodedPayloads should equal(originalPayloads)
-
-      control.drainAndShutdown()(microservice.system.dispatcher)
-    }
+    val decodedPayloads = decoded.map(_.getPayload)
+    decodedPayloads should equal(originalPayloads)
   }
 
   it should "sign json messages with a private key" in {
-    withRunningKafka {
-      val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
-      val signer = new Signer(privKey) {}
-      val microservice = new MessageSignerMicroservice(_ => signer)
-      val control = microservice.run
+    val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
+    val signer = new Signer(privKey) {}
+    val microservice = messageSignerMicroservice(_ => signer)
+    microservice.outputTopics = Map("default" -> "outgoing")
+    import microservice.kafkaMocks._
 
-      testMessages.foreach(m => publishToKafka(mkJsonMessage(m)))
+    testMessages.foreach(m => publishToKafka(mkJsonMessage(m)))
 
-      val res = consumeNumberStringMessagesFrom("outgoing", testMessages.length)
+    val res = consumeNumberStringMessagesFrom("outgoing", testMessages.length)
 
-      val ver = getVerifier(privKey)
+    val ver = getVerifier(privKey)
 
-      val decoded = res.map(JSONProtocolDecoder.getDecoder.decode(_, ver))
+    val decoded = res.map(JSONProtocolDecoder.getDecoder.decode(_, ver))
 
-      val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
-        .map(_.ubirchPacket.getPayload).map(fromJsonNode)
+    val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
+      .map(_.ubirchPacket.getPayload).map(fromJsonNode)
 
-      val decodedPayloads = decoded.map(_.getPayload).map(fromJsonNode)
-      decodedPayloads should equal(originalPayloads)
-
-      control.drainAndShutdown()(microservice.system.dispatcher)
-    }
+    val decodedPayloads = decoded.map(_.getPayload).map(fromJsonNode)
+    decodedPayloads should equal(originalPayloads)
   }
+
+  private def messageSignerMicroservice(signerFactory: Config => Signer) =
+    NioMicroserviceMock(MessageSignerMicroservice(signerFactory))
 
   // scalastyle:off line.size.limit
   private val testMessages = List(

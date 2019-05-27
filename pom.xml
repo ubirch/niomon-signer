@@ -56,6 +56,14 @@
             <artifactId>ubirch-crypto</artifactId>
             <version>${ubirch-crypto.version}</version>
         </dependency>
+
+
+        <dependency>
+            <groupId>ubirch</groupId>
+            <artifactId>microservice-base-mock</artifactId>
+            <version>1.0.0</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
