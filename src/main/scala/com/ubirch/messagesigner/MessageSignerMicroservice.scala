@@ -12,7 +12,7 @@ class MessageSignerMicroservice(
   signerFactory: Config => Signer,
   runtime: NioMicroservice[MessageEnvelope, StringOrByteArray]
 ) extends NioMicroserviceLogic(runtime) {
-  val signer: Signer = signerFactory(context.config)
+  val signer: Signer = signerFactory(config)
 
   override def processRecord(record: ConsumerRecord[String, MessageEnvelope]): ProducerRecord[String, StringOrByteArray] = {
     logger.debug(s"signing message: ${record.value().ubirchPacket}")
