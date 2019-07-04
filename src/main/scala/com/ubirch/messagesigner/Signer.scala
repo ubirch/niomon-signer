@@ -16,10 +16,8 @@
 
 package com.ubirch.messagesigner
 
-import java.security.MessageDigest
-import java.util.{Base64, UUID}
-
 import com.typesafe.scalalogging.StrictLogging
+import com.ubirch.client.protocol.DefaultProtocolSigner
 import com.ubirch.crypto.PrivKey
 import com.ubirch.kafka.{MessageEnvelope, _}
 import com.ubirch.messagesigner.StringOrByteArray.StringOrByteArray
@@ -30,16 +28,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 class Signer(_privateKey: => PrivKey) extends StrictLogging {
   lazy private val privateKey = _privateKey
 
-  private val signer: ProtocolSigner = (_: UUID, data: Array[Byte], offset: Int, len: Int) => {
-    val sha512 = MessageDigest.getInstance("SHA-512")
-    sha512.update(data, offset, len)
-    val bytesToSign = sha512.digest()
-
-    val signature: Array[Byte] = privateKey.sign(bytesToSign)
-    logger.debug(s"signed ${data.length} bytes: ${Base64.getEncoder.encodeToString(bytesToSign)}")
-
-    signature
-  }
+  private val signer: ProtocolSigner = new DefaultProtocolSigner(_ => Some(privateKey))
 
   def sign(record: ConsumerRecord[String, MessageEnvelope]): ConsumerRecord[String, StringOrByteArray] = {
     val payload = record.value().ubirchPacket
