@@ -1,0 +1,24 @@
+{{- define "message-signer.env" -}}
+- name: KAFKA_TOPIC_IN
+  value: "niomon.response"
+- name: KAFKA_TOPIC_OUT
+  value: "binary.response"
+- name: SIGNER_PRIVATE_KEY_ALGORITHM
+  value: "Ed25519"
+- name: SIGNER_PRIVATE_KEY
+  valueFrom:
+    secretKeyRef:
+      name: private-keys-niomon
+      key: signer-key-ed25519
+{{- end -}}
+
+{{- $deployment := (dict "envStr" (include "message-signer.env" .)) -}}
+
+{{- $_ := set $deployment "Root" . -}}
+{{- $_ := set $deployment "name" "message-signer" -}}
+
+{{ template "niomon.deployment" $deployment }}
+
+---
+
+{{ template "niomon.service" $deployment }}
