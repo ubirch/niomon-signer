@@ -29,7 +29,7 @@ object Main extends StrictLogging {
   def main(args: Array[String]): Unit = {
     try {
       Await.result(
-        NioMicroserviceLive("message-signer", MessageSignerMicroservice(c => {
+        NioMicroserviceLive("niomon-signer", MessageSignerMicroservice(c => {
           val rawAlg = c.getString("private-key.algorithm")
           val rawKey = c.getString("private-key.bytes").substring(0, 64)
 
