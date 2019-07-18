@@ -15,7 +15,7 @@
 {{- $deployment := (dict "envStr" (include "niomon-signer.env" .)) -}}
 
 {{- $_ := set $deployment "Root" . -}}
-{{- $_ := set $deployment "name" "niomon-signer" -}}
+{{- $_ := set $deployment "name" "signer" -}}
 
 {{ template "niomon.deployment" $deployment }}
 
