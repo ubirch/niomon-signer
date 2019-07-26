@@ -1,10 +1,10 @@
 package com.ubirch.messagesigner
 
 import com.typesafe.config.Config
-import com.ubirch.kafka.MessageEnvelope
-import com.ubirch.niomon.base.{NioMicroservice, NioMicroserviceLogic}
-import com.ubirch.kafka._
+import com.ubirch.kafka.{MessageEnvelope, _}
 import com.ubirch.messagesigner.StringOrByteArray._
+import com.ubirch.niomon.base.{NioMicroservice, NioMicroserviceLogic}
+import net.logstash.logback.argument.StructuredArguments.v
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 
@@ -15,9 +15,9 @@ class MessageSignerMicroservice(
   val signer: Signer = signerFactory(config)
 
   override def processRecord(record: ConsumerRecord[String, MessageEnvelope]): ProducerRecord[String, StringOrByteArray] = {
-    logger.debug(s"signing message: ${record.value().ubirchPacket}")
+    logger.debug(s"signing message: ${record.value().ubirchPacket}", v("requestId", record.key()))
     val signedRecord = signer.sign(record)
-    logger.debug(s"message successfully signed!")
+    logger.debug(s"message successfully signed", v("requestId", record.key()))
     signedRecord.toProducerRecord(onlyOutputTopic)
   }
 }

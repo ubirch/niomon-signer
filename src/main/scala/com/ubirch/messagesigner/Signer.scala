@@ -23,6 +23,7 @@ import com.ubirch.kafka.{MessageEnvelope, _}
 import com.ubirch.messagesigner.StringOrByteArray.StringOrByteArray
 import com.ubirch.protocol.codec.{JSONProtocolEncoder, MsgPackProtocolEncoder}
 import com.ubirch.protocol.{ProtocolMessage, ProtocolSigner}
+import net.logstash.logback.argument.StructuredArguments.v
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
 class Signer(_privateKey: => PrivKey) extends StrictLogging {
@@ -33,20 +34,20 @@ class Signer(_privateKey: => PrivKey) extends StrictLogging {
   def sign(record: ConsumerRecord[String, MessageEnvelope]): ConsumerRecord[String, StringOrByteArray] = {
     val payload = record.value().ubirchPacket
     val (encoded, newContentType) = record.headersScala.get("Content-Type") match {
-      case Some(ct@"application/json") => (StringOrByteArray(signAndEncodeJson(payload)), ct)
-      case _ => (StringOrByteArray(signAndEncodeMsgPack(payload)), "application/octet-stream")
+      case Some(ct@"application/json") => (StringOrByteArray(signAndEncodeJson(payload, record.key())), ct)
+      case _ => (StringOrByteArray(signAndEncodeMsgPack(payload, record.key())), "application/octet-stream")
     }
 
     record.copy(value = encoded).withExtraHeaders("Content-Type" -> newContentType)
   }
 
-  private def signAndEncodeJson(payload: ProtocolMessage): String = {
-    logger.debug("encoding with JSONProtocolEncoder")
+  private def signAndEncodeJson(payload: ProtocolMessage, id: String): String = {
+    logger.debug("encoding with JSONProtocolEncoder", v("requestId", id))
     JSONProtocolEncoder.getEncoder.encode(payload, signer)
   }
 
-  private def signAndEncodeMsgPack(payload: ProtocolMessage): Array[Byte] = {
-    logger.debug("encoding with MsgPackProtocolEncoder")
+  private def signAndEncodeMsgPack(payload: ProtocolMessage, id: String): Array[Byte] = {
+    logger.debug("encoding with MsgPackProtocolEncoder", v("requestId", id))
     MsgPackProtocolEncoder.getEncoder.encode(payload, signer)
   }
 }
