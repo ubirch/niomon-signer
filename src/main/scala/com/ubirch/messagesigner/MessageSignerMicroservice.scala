@@ -15,9 +15,8 @@ class MessageSignerMicroservice(
   val signer: Signer = signerFactory(config)
 
   override def processRecord(record: ConsumerRecord[String, MessageEnvelope]): ProducerRecord[String, StringOrByteArray] = {
-    logger.debug(s"signing message: ${record.value().ubirchPacket}", v("requestId", record.key()))
+    logger.info(s"signing response: ${record.value().ubirchPacket}", v("requestId", record.key()))
     val signedRecord = signer.sign(record)
-    logger.debug(s"message successfully signed", v("requestId", record.key()))
     signedRecord.toProducerRecord(onlyOutputTopic)
   }
 }
