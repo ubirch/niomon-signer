@@ -1,8 +1,8 @@
 {{- define "niomon-signer.env" -}}
 - name: KAFKA_TOPIC_IN
-  value: "niomon.response"
+  value: "ubirch-common-response-json"
 - name: KAFKA_TOPIC_OUT
-  value: "binary.response"
+  value: "ubirch-common-rsp-signed-bin"
 - name: SIGNER_PRIVATE_KEY_ALGORITHM
   value: "Ed25519"
 - name: SIGNER_PRIVATE_KEY
@@ -16,6 +16,7 @@
 
 {{- $_ := set $deployment "Root" . -}}
 {{- $_ := set $deployment "name" "signer" -}}
+  {{- $_ := set $deployment "replicas" .Values.signer.replicas -}}
 
 {{ template "niomon.deployment" $deployment }}
 
