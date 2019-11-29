@@ -1,5 +1,8 @@
-# WIP
+# Niomon Signer
+This microservice signs UPPs with the configured cryptographic key.
 
-## niomon-signer
+## Development
+The signing logic is in the [Signer](./src/main/scala/com/ubirch/messagesigner/Signer.scala) class.
 
-todo    
+### Core Libraries
+* ubirch-crypto
