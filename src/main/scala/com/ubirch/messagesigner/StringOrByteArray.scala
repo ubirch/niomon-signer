@@ -18,6 +18,8 @@ package com.ubirch.messagesigner
 
 import com.ubirch.niomon.util.KafkaPayload
 
+// TODO fix refactoring leftover
+// This may seem a little useless. That's because it mostly is. It's a leftover from an earlier refactoring.
 object StringOrByteArray {
   type StringOrByteArray = Either[Array[Byte], String]
 
