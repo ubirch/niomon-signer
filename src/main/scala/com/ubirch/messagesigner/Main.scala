@@ -30,8 +30,12 @@ object Main extends StrictLogging {
     try {
       Await.result(
         NioMicroserviceLive("niomon-signer", MessageSignerMicroservice(c => {
-          val rawAlg = c.getString("private-key.algorithm")
-          val rawKey = c.getString("private-key.bytes").substring(0, 64)
+          import collection.JavaConverters._
+
+          c.getConfigList("private-key").asScala.map { key =>
+            val rawUUID = key.getString("uuid")
+            val rawAlg = key.getString("algorithm")
+            val rawKey = key.getString("bytes").substring(0, 64)
 
             logger.debug(s"[uuid=${rawUUID}\nrawAlg=$rawAlg]\n[rawKey=***]")
 
