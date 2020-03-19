@@ -19,8 +19,8 @@ package com.ubirch.messagesigner
 import com.typesafe.scalalogging.StrictLogging
 import com.ubirch.crypto.GeneratorKeyFactory
 import com.ubirch.crypto.utils.Curve
-import com.ubirch.niomon.base.NioMicroserviceLive
 import com.ubirch.messagesigner.StringOrByteArray._
+import com.ubirch.niomon.base.NioMicroserviceLive
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -33,16 +33,17 @@ object Main extends StrictLogging {
           val rawAlg = c.getString("private-key.algorithm")
           val rawKey = c.getString("private-key.bytes").substring(0, 64)
 
-          logger.debug(s"[rawAlg=$rawAlg]\n[rawKey=$rawKey]")
+            logger.debug(s"[uuid=${rawUUID}\nrawAlg=$rawAlg]\n[rawKey=***]")
 
-          val algorithm = rawAlg match {
-            case "Ed25519" => Curve.Ed25519
-            case "ECDSA" => Curve.PRIME256V1
-            case a =>
-              throw new IllegalArgumentException(s"unknown private key algorithm: $a")
-          }
+            val algorithm = rawAlg match {
+              case "Ed25519" => Curve.Ed25519
+              case "ECDSA" => Curve.PRIME256V1
+              case a =>
+                throw new IllegalArgumentException(s"unknown private key algorithm: $a")
+            }
 
-          new Signer(GeneratorKeyFactory.getPrivKey(rawKey, algorithm))
+            rawAlg -> new Signer(GeneratorKeyFactory.getPrivKey(rawKey, algorithm))
+          }.toMap
         })).runUntilDoneAndShutdownProcess,
         Duration.Inf
       )

@@ -24,10 +24,10 @@ import com.typesafe.config.Config
 import com.ubirch.crypto.utils.Curve
 import com.ubirch.crypto.{GeneratorKeyFactory, PrivKey}
 import com.ubirch.kafka.{EnvelopeDeserializer, EnvelopeSerializer}
+import com.ubirch.messagesigner.StringOrByteArray._
 import com.ubirch.niomon.base.NioMicroserviceMock
 import com.ubirch.protocol.ProtocolVerifier
 import com.ubirch.protocol.codec.{JSONProtocolDecoder, MsgPackProtocolDecoder}
-import com.ubirch.messagesigner.StringOrByteArray._
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.json4s.jackson.JsonMethods.fromJsonNode
@@ -41,7 +41,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
   "messageSignerFlow" should "sign binary messages with a private key" in {
     val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
     val signer = new Signer(privKey) {}
-    val microservice = messageSignerMicroservice(_ => signer)
+    val microservice = messageSignerMicroservice(_ => Map("Ed25519" -> signer))
     microservice.outputTopics = Map("default" -> "outgoing")
     import microservice.kafkaMocks._
 
@@ -63,7 +63,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
   it should "sign json messages with a private key" in {
     val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
     val signer = new Signer(privKey) {}
-    val microservice = messageSignerMicroservice(_ => signer)
+    val microservice = messageSignerMicroservice(_ => Map("Ed25519" -> signer))
     microservice.outputTopics = Map("default" -> "outgoing")
     import microservice.kafkaMocks._
 
@@ -82,7 +82,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
     decodedPayloads should equal(originalPayloads)
   }
 
-  private def messageSignerMicroservice(signerFactory: Config => Signer) =
+  private def messageSignerMicroservice(signerFactory: Config => Map[String, Signer]) =
     NioMicroserviceMock(MessageSignerMicroservice(signerFactory))
 
   // scalastyle:off line.size.limit
