@@ -17,7 +17,6 @@ class MessageSignerMicroservice(
   override def processRecord(record: ConsumerRecord[String, MessageEnvelope]): ProducerRecord[String, StringOrByteArray] = {
     logger.info(s"signing response: ${record.value().ubirchPacket}", v("requestId", record.key()))
 
-
     val algorithm = record.headersScala.getOrElse("algorithm", "unknown")
     signers.get(algorithm) match {
       case Some(signer) => signer.sign(record).toProducerRecord(onlyOutputTopic)
