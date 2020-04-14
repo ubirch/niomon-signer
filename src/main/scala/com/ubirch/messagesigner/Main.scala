@@ -33,11 +33,10 @@ object Main extends StrictLogging {
           import collection.JavaConverters._
 
           c.getConfigList("private-key").asScala.map { key =>
-            val rawUUID = key.getString("uuid")
             val rawAlg = key.getString("algorithm")
             val rawKey = key.getString("bytes").substring(0, 64)
 
-            logger.debug(s"[uuid=${rawUUID}\nrawAlg=$rawAlg]\n[rawKey=***]")
+            logger.debug(s"[rawAlg=$rawAlg]\n[rawKey=***]")
 
             val algorithm = rawAlg match {
               case "Ed25519" => Curve.Ed25519
