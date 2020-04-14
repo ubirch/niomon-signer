@@ -19,7 +19,9 @@ class MessageSignerMicroservice(
 
     val algorithm = record.headersScala.getOrElse("algorithm", "unknown")
     signers.get(algorithm) match {
-      case Some(signer) => signer.sign(record).toProducerRecord(onlyOutputTopic)
+      case Some(signer) =>
+        logger.debug(s"signer found for algorithm [${algorithm}]")
+        signer.sign(record).toProducerRecord(onlyOutputTopic)
       case None =>
         logger.error(s"no signer found for algorithm [${algorithm}]")
         signers("Ed25519").sign(record).toProducerRecord(onlyOutputTopic)
