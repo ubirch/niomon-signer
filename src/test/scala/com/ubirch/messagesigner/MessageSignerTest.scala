@@ -39,9 +39,11 @@ class MessageSignerTest extends FlatSpec with Matchers {
   implicit val messageEnvelopeSerializer = EnvelopeSerializer
 
   "messageSignerFlow" should "sign binary messages with a private key" in {
-    val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
+
+    val curve = MessageSignerMicroservice.curveFromString("Ed25519").getOrElse(fail("No curve found"))
+    val privKey = GeneratorKeyFactory.getPrivKey(curve)
     val signer = new Signer(privKey) {}
-    val microservice = messageSignerMicroservice(_ => Map("Ed25519" -> signer))
+    val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
     microservice.outputTopics = Map("default" -> "outgoing")
     import microservice.kafkaMocks._
 
@@ -60,10 +62,35 @@ class MessageSignerTest extends FlatSpec with Matchers {
     decodedPayloads should equal(originalPayloads)
   }
 
-  it should "sign json messages with a private key" in {
-    val privKey = GeneratorKeyFactory.getPrivKey(Curve.Ed25519)
+  "messageSignerFlow" should "sign binary messages with a private key with algorithm Ed25519 header" in {
+
+    val curve = MessageSignerMicroservice.curveFromString("Ed25519").getOrElse(fail("No curve found"))
+    val privKey = GeneratorKeyFactory.getPrivKey(curve)
     val signer = new Signer(privKey) {}
-    val microservice = messageSignerMicroservice(_ => Map("Ed25519" -> signer))
+    val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
+    microservice.outputTopics = Map("default" -> "outgoing")
+    import microservice.kafkaMocks._
+
+    testMessages.foreach(m => publishToKafka(mkBinMessage(m).withHeaders("algorithm"-> "Ed25519")))
+
+    val res = consumeNumberMessagesFrom[Array[Byte]]("outgoing", testMessages.length)
+
+    val ver = getVerifier(privKey)
+
+    val decoded = res.map(MsgPackProtocolDecoder.getDecoder.decode(_, ver))
+
+    val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
+      .map(_.ubirchPacket.getPayload)
+
+    val decodedPayloads = decoded.map(_.getPayload)
+    decodedPayloads should equal(originalPayloads)
+  }
+
+  it should "sign json messages with a private key" in {
+    val curve = MessageSignerMicroservice.curveFromString("Ed25519").getOrElse(fail("No curve found"))
+    val privKey = GeneratorKeyFactory.getPrivKey(curve)
+    val signer = new Signer(privKey) {}
+    val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
     microservice.outputTopics = Map("default" -> "outgoing")
     import microservice.kafkaMocks._
 
@@ -82,7 +109,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
     decodedPayloads should equal(originalPayloads)
   }
 
-  private def messageSignerMicroservice(signerFactory: Config => Map[String, Signer]) =
+  private def messageSignerMicroservice(signerFactory: Config => Map[Curve, Signer]) =
     NioMicroserviceMock(MessageSignerMicroservice(signerFactory))
 
   // scalastyle:off line.size.limit

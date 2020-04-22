@@ -18,7 +18,6 @@ package com.ubirch.messagesigner
 
 import com.typesafe.scalalogging.StrictLogging
 import com.ubirch.crypto.GeneratorKeyFactory
-import com.ubirch.crypto.utils.Curve
 import com.ubirch.messagesigner.StringOrByteArray._
 import com.ubirch.niomon.base.NioMicroserviceLive
 
@@ -33,20 +32,20 @@ object Main extends StrictLogging {
           import collection.JavaConverters._
 
           c.getConfigList("private-key").asScala.map { key =>
+
             val rawAlg = key.getString("algorithm")
             val rawKey = key.getString("bytes").substring(0, 64)
 
-            logger.debug(s"[rawAlg=$rawAlg]\n[rawKey=***]")
-
-            val algorithm = rawAlg match {
-              case "Ed25519" => Curve.Ed25519
-              case "ECDSA" => Curve.PRIME256V1
-              case a =>
-                throw new IllegalArgumentException(s"unknown private key algorithm: $a")
+            val curve = MessageSignerMicroservice.curveFromString(rawAlg).getOrElse {
+              throw new IllegalArgumentException(s"unknown private key algorithm: $rawAlg")
             }
+            val signer = new Signer(GeneratorKeyFactory.getPrivKey(rawKey, curve))
 
-            rawAlg -> new Signer(GeneratorKeyFactory.getPrivKey(rawKey, algorithm))
+            logger.debug(s"[rawAlg=$rawAlg] [curve=$curve.] [rawKey=***]")
+
+            curve -> signer
           }.toMap
+
         })).runUntilDoneAndShutdownProcess,
         Duration.Inf
       )
