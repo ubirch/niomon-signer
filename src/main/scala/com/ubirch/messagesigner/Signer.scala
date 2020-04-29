@@ -33,7 +33,7 @@ class Signer(_privateKey: => PrivKey) extends StrictLogging {
 
   def sign(record: ConsumerRecord[String, MessageEnvelope]): ConsumerRecord[String, StringOrByteArray] = {
     val payload = record.value().ubirchPacket
-    val (encoded, newContentType) = record.headersScala.get("Content-Type") match {
+    val (encoded, newContentType) = record.findHeader("Content-Type") match {
       case Some(ct@"application/json") => (StringOrByteArray(signAndEncodeJson(payload, record.key())), ct)
       case _ => (StringOrByteArray(signAndEncodeMsgPack(payload, record.key())), "application/octet-stream")
     }

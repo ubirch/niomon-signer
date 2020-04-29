@@ -19,7 +19,7 @@ class MessageSignerMicroservice(
   override def processRecord(record: ConsumerRecord[String, MessageEnvelope]): ProducerRecord[String, StringOrByteArray] = {
     logger.info(s"signing response: ${record.value().ubirchPacket}", v("requestId", record.key()))
 
-    val algorithm = record.headersScala.getOrElse("algorithm", "unknown")
+    val algorithm = record.findHeader("algorithm").getOrElse("unknown")
 
     val maybeSigner = for {
       curve <- MessageSignerMicroservice.curveFromString(algorithm)
