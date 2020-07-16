@@ -17,15 +17,16 @@ class MessageSignerMicroservice(
   val signers: Map[Curve, Signer] = signerFactory(config)
 
   override def processRecord(record: ConsumerRecord[String, MessageEnvelope]): ProducerRecord[String, StringOrByteArray] = {
-    logger.info(s"signing response: ${record.value().ubirchPacket}", v("requestId", record.key()))
 
     val algorithm = record.findHeader("algorithm").getOrElse("unknown")
+    val maybeCurve = MessageSignerMicroservice.curveFromString(algorithm)
+
+    logger.info(s"signing response: ${record.value().ubirchPacket} algorithm=[$algorithm] | curve=[$maybeCurve]", v("requestId", record.key()))
 
     val maybeSigner = for {
-      curve <- MessageSignerMicroservice.curveFromString(algorithm)
+      curve <- maybeCurve
       signer <- signers.get(curve)
     } yield {
-      logger.debug(s"signer found for algorithm [$algorithm] -> [${curve.toString}]")
       signer
     }
 
