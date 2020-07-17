@@ -20,9 +20,9 @@ class MessageSignerMicroservice(
 
     val algorithm = record.findHeader("algorithm").getOrElse("unknown")
     val maybeCurve = MessageSignerMicroservice.curveFromString(algorithm)
+    val requestId = record.requestIdHeader().orNull
 
-    logger.info(s"signing response: ${record.value().ubirchPacket} algorithm=[$algorithm] | curve=[${maybeCurve.map(_.name()).getOrElse("No curve")}]",
-      v("requestId", record.key()))
+    logger.info(s"signing response: ${record.value().ubirchPacket} algorithm=[$algorithm] | curve=[${maybeCurve.map(_.name()).getOrElse("No curve")}]", v("requestId", requestId))
 
     val maybeSigner = for {
       curve <- maybeCurve
