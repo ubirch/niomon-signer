@@ -21,7 +21,7 @@ import com.ubirch.client.protocol.DefaultProtocolSigner
 import com.ubirch.crypto.PrivKey
 import com.ubirch.kafka.{MessageEnvelope, _}
 import com.ubirch.messagesigner.StringOrByteArray.StringOrByteArray
-import com.ubirch.protocol.codec.{JSONProtocolEncoder, MsgPackProtocolEncoder}
+import com.ubirch.protocol.codec.{JSONProtocolEncoder, MsgPackProtocolEncoderExtended}
 import com.ubirch.protocol.{ProtocolMessage, ProtocolSigner}
 import net.logstash.logback.argument.StructuredArguments.v
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -48,7 +48,7 @@ class Signer(_privateKey: => PrivKey) extends StrictLogging {
   }
 
   private def signAndEncodeMsgPack(payload: ProtocolMessage, id: String): Array[Byte] = {
-    logger.debug("encoding with MsgPackProtocolEncoder", v("requestId", id))
-    MsgPackProtocolEncoder.getEncoder.encode(payload, signer)
+    logger.info("encoding with MsgPackProtocolEncoderExtended", v("requestId", id))
+    MsgPackProtocolEncoderExtended.getEncoder.encode(payload, signer)
   }
 }
