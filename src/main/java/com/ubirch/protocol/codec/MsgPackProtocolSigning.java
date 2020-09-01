@@ -1,19 +1,3 @@
-/*
- * Copyright (c) 2019 ubirch GmbH
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.ubirch.protocol.codec;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,29 +15,19 @@ import java.security.SignatureException;
 
 public class MsgPackProtocolSigning {
 
-    private static MessagePack.PackerConfig config = new MessagePack.PackerConfig().withStr8FormatSupport(false);
+    private static final MessagePack.PackerConfig config = new MessagePack.PackerConfig().withStr8FormatSupport(false);
 
-    final ByteArrayOutputStream out;
-    final MessagePacker packer;
-    final ProtocolMessage pm;
-    final ProtocolSigner signer;
+    public MsgPackProtocolSigning() { }
 
-    public MsgPackProtocolSigning(ProtocolMessage pm, ProtocolSigner signer) {
-        this.pm = pm;
-        this.signer = signer;
-        this.out = new ByteArrayOutputStream(255);
-        this.packer = config.newPacker(out);
-    }
-
-    public void version() throws IOException {
+    public void versionConsumer(MessagePacker packer, ProtocolMessage pm) throws IOException {
         packer.packInt(pm.getVersion());
     }
 
-    public void UUID() throws IOException {
+    public void uuidConsumer(MessagePacker packer, ProtocolMessage pm) throws IOException {
         packer.packBinaryHeader(16).addPayload(UUIDUtil.uuidToBytes(pm.getUUID()));
     }
 
-    public void chain() throws IOException {
+    public void chainConsumer(MessagePacker packer, ProtocolMessage pm) throws IOException {
         switch (pm.getVersion()) {
             case ProtocolMessage.CHAINED:
                 packer.packBinaryHeader(64);
@@ -71,27 +45,35 @@ public class MsgPackProtocolSigning {
         }
     }
 
-    public void hint() throws IOException {
+    public void hintConsumer(MessagePacker packer, ProtocolMessage pm) throws IOException {
         packer.packInt(pm.getHint());
     }
 
-    public void payload() throws IOException {
+    public void payloadConsumer(MessagePacker packer, ProtocolMessage pm, ByteArrayOutputStream out) throws IOException {
         ObjectMapper mapper = new ObjectMapper(new MessagePackFactory());
         mapper.writeValue(out, pm.getPayload());
     }
 
-    public ProtocolMessage sign() throws IOException, SignatureException, InvalidKeyException {
+    public ProtocolMessage sign(ProtocolMessage pm, ProtocolSigner signer) throws IOException, SignatureException, InvalidKeyException {
+        //We prepare the streams and the packer
+        ByteArrayOutputStream out = new ByteArrayOutputStream(255);
+        MessagePacker packer = config.newPacker(out);
         packer.packArrayHeader(5 + (pm.getVersion() & 0x0f) - 2);
-        version();
-        UUID();
-        chain();
-        hint();
+
+        //We build a stream based on the proper order for the Protocol Message
+        versionConsumer(packer, pm);
+        uuidConsumer(packer, pm);
+        chainConsumer(packer, pm);
+        hintConsumer(packer, pm);
         packer.flush(); // make sure everything is in the byte buffer
-        payload();
+        payloadConsumer(packer, pm, out);
         packer.close(); // also closes out
 
+        //We sign the bytes
         byte[] dataToSign = out.toByteArray();
         byte[] signature = signer.sign(pm.getUUID(), dataToSign, 0, dataToSign.length);
+
+        //We set the values into the protocol message
         pm.setSigned(dataToSign);
         pm.setSignature(signature);
         return pm;
