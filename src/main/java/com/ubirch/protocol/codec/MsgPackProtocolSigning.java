@@ -12,6 +12,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.SignatureException;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class MsgPackProtocolSigning {
 

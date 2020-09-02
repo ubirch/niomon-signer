@@ -21,8 +21,13 @@ public class MsgPackProtocolEncoderExtended extends MsgPackProtocolEncoder {
         public void payloadConsumer(MessagePacker packer, ProtocolMessage pm, ByteArrayOutputStream out) throws IOException {
             if (pm.getPayload() instanceof TextNode) {
                 // write the payload
-                byte[] bytes = Base64.getDecoder().decode(pm.getPayload().asText());
-                packer.packBinaryHeader(16).addPayload(bytes);
+                try {
+                    //We try to decode from base64 as this is what is expected when it is binary
+                    byte[] bytes = Base64.getDecoder().decode(pm.getPayload().asText());
+                    packer.packBinaryHeader(16).addPayload(bytes);
+                } catch (Exception e) {
+                    super.payloadConsumer(packer, pm, out);
+                }
             } else {
                 super.payloadConsumer(packer, pm, out);
             }
