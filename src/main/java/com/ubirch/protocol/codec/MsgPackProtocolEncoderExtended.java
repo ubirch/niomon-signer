@@ -19,7 +19,7 @@ public class MsgPackProtocolEncoderExtended extends MsgPackProtocolEncoder {
     final private MsgPackProtocolSigning protocolSigning = new MsgPackProtocolSigning() {
         @Override
         public void payloadConsumer(MessagePacker packer, ProtocolMessage pm, ByteArrayOutputStream out) throws IOException {
-            // To be able to return the payload a just bytes and not as base64 values, we have to
+            // To be able to return the payload as just bytes and not as base64 values, we have to
             // explicitly try to decode and pack the data in the msgpack.
             // There seems to be a limitation with the way json4s handles binary nodes.
             // https://gitlab.com/ubirch/ubirch-kafka-envelope/-/blob/master/src/main/scala/com/ubirch/kafka/package.scala#L166
@@ -27,7 +27,7 @@ public class MsgPackProtocolEncoderExtended extends MsgPackProtocolEncoder {
                 // write the payload
                 try {
                     byte[] bytes = Base64.getDecoder().decode(pm.getPayload().asText());
-                    packer.packBinaryHeader(16).addPayload(bytes);
+                    packer.packBinaryHeader(bytes.length).addPayload(bytes);
                 } catch (Exception e) {
                     super.payloadConsumer(packer, pm, out);
                 }
