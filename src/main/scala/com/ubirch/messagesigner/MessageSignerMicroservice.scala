@@ -1,5 +1,6 @@
 package com.ubirch.messagesigner
 
+import akka.ConfigurationException
 import com.typesafe.config.Config
 import com.ubirch.crypto.utils.Curve
 import com.ubirch.kafka.{MessageEnvelope, _}
@@ -15,6 +16,8 @@ class MessageSignerMicroservice(
                                ) extends NioMicroserviceLogic(runtime) {
 
   val signers: Map[Curve, Signer] = signerFactory(config)
+  private val mqttTopic: String =  outputTopics.getOrElse("mqtt", throw new ConfigurationException("missing output topic for mqtt service"))
+  private val httpTopic: String =  outputTopics.getOrElse("http", throw new ConfigurationException("missing output topic for http service"))
 
   override def processRecord(record: ConsumerRecord[String, MessageEnvelope]): ProducerRecord[String, StringOrByteArray] = {
 
@@ -37,8 +40,12 @@ class MessageSignerMicroservice(
       signers(curve)
     }
 
-    signer.sign(record).toProducerRecord(onlyOutputTopic)
+    signer.sign(record).toProducerRecord(getOutputTopic(record))
+  }
 
+  private def getOutputTopic(r: ConsumerRecord[String, MessageEnvelope]): String = {
+    if (r.existsHeader("X-Ubirch-Gateway-Key".toLowerCase)) mqttTopic
+    else httpTopic
   }
 }
 

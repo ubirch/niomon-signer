@@ -19,7 +19,6 @@ package com.ubirch.messagesigner
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security._
 import java.util.UUID
-
 import com.typesafe.config.Config
 import com.ubirch.crypto.utils.Curve
 import com.ubirch.crypto.{GeneratorKeyFactory, PrivKey}
@@ -44,7 +43,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
     val privKey = GeneratorKeyFactory.getPrivKey(curve)
     val signer = new Signer(privKey) {}
     val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
-    microservice.outputTopics = Map("default" -> "outgoing")
+    microservice.outputTopics = Map("http" -> "outgoing", "mqtt" -> "shouldnt-be-used")
     import microservice.kafkaMocks._
 
     testMessages.foreach(m => publishToKafka(mkBinMessage(m)))
@@ -68,7 +67,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
     val privKey = GeneratorKeyFactory.getPrivKey(curve)
     val signer = new Signer(privKey) {}
     val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
-    microservice.outputTopics = Map("default" -> "outgoing")
+    microservice.outputTopics = Map("http" -> "outgoing", "mqtt" -> "shouldnt-be-used")
     import microservice.kafkaMocks._
 
     testMessages.foreach(m => publishToKafka(mkBinMessage(m).withHeaders("algorithm"-> "Ed25519")))
@@ -91,7 +90,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
     val privKey = GeneratorKeyFactory.getPrivKey(curve)
     val signer = new Signer(privKey) {}
     val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
-    microservice.outputTopics = Map("default" -> "outgoing")
+    microservice.outputTopics = Map("http" -> "outgoing", "mqtt" -> "shouldnt-be-used")
     import microservice.kafkaMocks._
 
     testMessages.foreach(m => publishToKafka(mkJsonMessage(m)))
@@ -108,6 +107,36 @@ class MessageSignerTest extends FlatSpec with Matchers {
     val decodedPayloads = decoded.map(_.getPayload).map(fromJsonNode)
     decodedPayloads should equal(originalPayloads)
   }
+
+  it should "send to outgoing-mqtt topic" in {
+    val curve = MessageSignerMicroservice.curveFromString("Ed25519").getOrElse(fail("No curve found"))
+    val privKey = GeneratorKeyFactory.getPrivKey(curve)
+    val signer = new Signer(privKey) {}
+    val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
+    microservice.outputTopics = Map("mqtt" -> "outgoing-mqtt", "http" -> "outgoing-http")
+
+    import microservice.kafkaMocks._
+
+
+    testMessages.foreach { m =>
+      val pr = mkJsonMessage(m)
+      pr.headers().add("X-Ubirch-Gateway-Key".toLowerCase, "mqtt".getBytes())
+      publishToKafka(pr)
+    }
+
+    val res = consumeNumberStringMessagesFrom("outgoing-mqtt", testMessages.length)
+
+    val ver = getVerifier(privKey)
+
+    val decoded = res.map(JSONProtocolDecoder.getDecoder.decode(_, ver))
+
+    val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
+      .map(_.ubirchPacket.getPayload).map(fromJsonNode)
+
+    val decodedPayloads = decoded.map(_.getPayload).map(fromJsonNode)
+    decodedPayloads should equal(originalPayloads)
+  }
+
 
   private def messageSignerMicroservice(signerFactory: Config => Map[Curve, Signer]) =
     NioMicroserviceMock(MessageSignerMicroservice(signerFactory))
