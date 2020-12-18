@@ -120,7 +120,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
 
     testMessages.foreach { m =>
       val pr = mkJsonMessage(m)
-      pr.headers().add("X-Ubirch-Gateway-Key".toLowerCase, "mqtt".getBytes())
+      pr.headers().add("X-Ubirch-Gateway-Type".toLowerCase, "mqtt".getBytes())
       publishToKafka(pr)
     }
 
@@ -142,7 +142,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
     NioMicroserviceMock(MessageSignerMicroservice(signerFactory))
 
   // scalastyle:off line.size.limit
-  private val testMessages = List(
+  private def testMessages = List(
     """{"ubirchPacket": {"version":35,"uuid":"7fb478b7-4aba-461f-bc50-faba6d754490","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"payload":"some bytes!"}, "context": {}}""",
     """{"ubirchPacket": {"version":35,"uuid":"d21c174f-5419-49d4-a614-e95ca0ea862e","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"payload":"some other stuff"}, "context": {}}""",
     """{"ubirchPacket": {"version":35,"uuid":"670f05ec-c850-43a0-b6ba-225cac26e3b2","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":50,"payload":[123,42,1337]}, "context": {}}"""
