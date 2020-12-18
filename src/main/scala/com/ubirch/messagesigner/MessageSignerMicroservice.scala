@@ -46,7 +46,7 @@ class MessageSignerMicroservice(
   }
 
   private def getOutputTopic(r: ConsumerRecord[String, MessageEnvelope]): String = {
-    if (r.existsHeader(GATEWAY_TYPE_HEADER) && r.findHeader(GATEWAY_TYPE_HEADER).get == MQTT_KEY) mqttTopic
+    if (r.findHeader(GATEWAY_TYPE_HEADER).contains(MQTT_KEY)) mqttTopic
     else httpTopic
   }
 }
