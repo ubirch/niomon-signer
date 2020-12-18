@@ -16,7 +16,7 @@ class MessageSignerMicroservice(
                                ) extends NioMicroserviceLogic(runtime) {
 
   val signers: Map[Curve, Signer] = signerFactory(config)
-  private final val GATEWAY_TYPE_HEADER = "X-Ubirch-Gateway-Key".toLowerCase
+  private final val X_UBIRCH_GATEWAY_TYPE = "X-Ubirch-Gateway-Type"
   private final val MQTT_KEY = "mqtt"
   private val mqttTopic: String = outputTopics.getOrElse(MQTT_KEY, throw new ConfigurationException("missing output topic for mqtt service"))
   private val httpTopic: String = outputTopics.getOrElse("http", throw new ConfigurationException("missing output topic for http service"))
@@ -46,7 +46,7 @@ class MessageSignerMicroservice(
   }
 
   private def getOutputTopic(r: ConsumerRecord[String, MessageEnvelope]): String = {
-    if (r.findHeader(GATEWAY_TYPE_HEADER).contains(MQTT_KEY)) mqttTopic
+    if (r.findHeader(X_UBIRCH_GATEWAY_TYPE).contains(MQTT_KEY)) mqttTopic
     else httpTopic
   }
 }
