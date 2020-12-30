@@ -19,6 +19,7 @@ package com.ubirch.messagesigner
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security._
 import java.util.UUID
+
 import com.typesafe.config.Config
 import com.ubirch.crypto.utils.Curve
 import com.ubirch.crypto.{GeneratorKeyFactory, PrivKey}
@@ -29,6 +30,7 @@ import com.ubirch.protocol.ProtocolVerifier
 import com.ubirch.protocol.codec.{JSONProtocolDecoder, MsgPackProtocolDecoder}
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import org.bouncycastle.asn1.ASN1Sequence
 import org.json4s.jackson.JsonMethods.fromJsonNode
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -37,7 +39,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
   implicit val byteArrayDeserializer = new ByteArrayDeserializer()
   implicit val messageEnvelopeSerializer = EnvelopeSerializer
 
-  "messageSignerFlow" should "sign binary messages with a private key" in {
+  "messageSignerFlow" should "sign binary messages with a private key - Ed25519" in {
 
     val curve = MessageSignerMicroservice.curveFromString("Ed25519").getOrElse(fail("No curve found"))
     val privKey = GeneratorKeyFactory.getPrivKey(curve)
@@ -59,6 +61,33 @@ class MessageSignerTest extends FlatSpec with Matchers {
 
     val decodedPayloads = decoded.map(_.getPayload)
     decodedPayloads should equal(originalPayloads)
+  }
+
+  "messageSignerFlow" should "sign binary messages with a private key -ECDSA - StandardEncoding" in {
+
+    val curve = MessageSignerMicroservice.curveFromString("ECDSA").getOrElse(fail("No curve found"))
+    val privKey = GeneratorKeyFactory.getPrivKey(curve)
+    val signer = new Signer(privKey) {}
+    val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
+    microservice.outputTopics = Map("http" -> "outgoing", "mqtt" -> "shouldnt-be-used")
+    import microservice.kafkaMocks._
+
+    testMessages.foreach(m => publishToKafka(mkBinMessage(m).withExtraHeaders("algorithm"-> "ECDSA")))
+
+    val res = consumeNumberMessagesFrom[Array[Byte]]("outgoing", testMessages.length)
+
+    val ver = getVerifierECDSA(privKey)
+
+    val decoded = res.map(MsgPackProtocolDecoder.getDecoder.decode(_, ver))
+
+    val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
+      .map(_.ubirchPacket.getPayload)
+
+    decoded.map{ pm => assert(ASN1Sequence.getInstance(pm.getSignature) != null) }
+
+    val decodedPayloads = decoded.map(_.getPayload)
+    decodedPayloads should equal(originalPayloads)
+
   }
 
   "messageSignerFlow" should "sign binary messages with a private key with algorithm Ed25519 header" in {
@@ -167,4 +196,11 @@ class MessageSignerTest extends FlatSpec with Matchers {
     sha512.update(data, offset, len)
     privKey.verify(sha512.digest(), signature)
   }
+
+
+  private def getVerifierECDSA(privKey: PrivKey): ProtocolVerifier = (_: UUID, data: Array[Byte], offset: Int, len: Int, signature: Array[Byte]) => {
+    val dataToVerify = data.slice(offset, offset + len)
+    privKey.verify(dataToVerify, signature)
+  }
+
 }
