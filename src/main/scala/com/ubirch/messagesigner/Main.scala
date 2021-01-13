@@ -39,7 +39,15 @@ object Main extends StrictLogging {
             val curve = MessageSignerMicroservice.curveFromString(rawAlg).getOrElse {
               throw new IllegalArgumentException(s"unknown private key algorithm: $rawAlg")
             }
-            val signer = new Signer(GeneratorKeyFactory.getPrivKey(rawKey, curve))
+
+            val privKey = GeneratorKeyFactory.getPrivKey(rawKey, curve)
+            if(rawAlg == "ECDSA") {
+              // We let our key ouput plain format for its signature (r,s)
+              // BC will then internally select the proper signature algorithm
+              //https://crypto.stackexchange.com/questions/57731/ecdsa-signature-rs-to-asn1-der-encoding-question
+              privKey.setSignatureAlgorithm("SHA256WITHPLAIN-ECDSA")
+            }
+            val signer = new Signer(privKey)
 
             logger.debug(s"[rawAlg=$rawAlg] [curve=$curve.] [rawKey=***]")
 
