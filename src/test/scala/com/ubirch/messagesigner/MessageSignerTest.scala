@@ -90,6 +90,34 @@ class MessageSignerTest extends FlatSpec with Matchers {
 
   }
 
+  "messageSignerFlow" should "sign binary messages with a private key -ECDSA - PlainEncoding" in {
+
+    val curve = MessageSignerMicroservice.curveFromString("ECDSA").getOrElse(fail("No curve found"))
+    val privKey = GeneratorKeyFactory.getPrivKey(curve)
+    privKey.setSignatureAlgorithm("SHA256WITHPLAIN-ECDSA")
+    val signer = new Signer(privKey) {}
+    val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
+    microservice.outputTopics = Map("http" -> "outgoing", "mqtt" -> "shouldnt-be-used")
+    import microservice.kafkaMocks._
+
+    testMessages.foreach(m => publishToKafka(mkBinMessage(m).withExtraHeaders("algorithm"-> "ECDSA")))
+
+    val res = consumeNumberMessagesFrom[Array[Byte]]("outgoing", testMessages.length)
+
+    val ver = getVerifierECDSA(privKey)
+
+    val decoded = res.map(MsgPackProtocolDecoder.getDecoder.decode(_, ver))
+
+    val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
+      .map(_.ubirchPacket.getPayload)
+
+    decoded.map{ pm => assertThrows[IllegalArgumentException](ASN1Sequence.getInstance(pm.getSignature)) }
+
+    val decodedPayloads = decoded.map(_.getPayload)
+    decodedPayloads should equal(originalPayloads)
+
+  }
+
   "messageSignerFlow" should "sign binary messages with a private key with algorithm Ed25519 header" in {
 
     val curve = MessageSignerMicroservice.curveFromString("Ed25519").getOrElse(fail("No curve found"))
