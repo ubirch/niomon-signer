@@ -112,6 +112,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
       .map(_.ubirchPacket.getPayload)
 
     decoded.map{ pm => assertThrows[IllegalArgumentException](ASN1Sequence.getInstance(pm.getSignature)) }
+    decoded.map{ pm => assert(pm.getSignature.length == 64) }
 
     val decodedPayloads = decoded.map(_.getPayload)
     decodedPayloads should equal(originalPayloads)
