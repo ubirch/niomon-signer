@@ -105,15 +105,12 @@ class MessageSignerTest extends FlatSpec with Matchers {
     val res = consumeNumberMessagesFrom[Array[Byte]]("outgoing", testMessages.length)
 
     val ver = getVerifierECDSA(privKey)
-
     val decoded = res.map(MsgPackProtocolDecoder.getDecoder.decode(_, ver))
-
-    val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _))
-      .map(_.ubirchPacket.getPayload)
 
     decoded.map{ pm => assertThrows[IllegalArgumentException](ASN1Sequence.getInstance(pm.getSignature)) }
     decoded.map{ pm => assert(pm.getSignature.length == 64) }
 
+    val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _)).map(_.ubirchPacket.getPayload)
     val decodedPayloads = decoded.map(_.getPayload)
     decodedPayloads should equal(originalPayloads)
 
