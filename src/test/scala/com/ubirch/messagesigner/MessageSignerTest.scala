@@ -60,10 +60,10 @@ class MessageSignerTest extends FlatSpec with Matchers {
       .map(_.ubirchPacket.getPayload)
 
     val decodedPayloads = decoded.map(_.getPayload)
-    decodedPayloads should equal(originalPayloads)
+    decodedPayloads.map(_.asText()) should equal(originalPayloads.map(_.asText()))
   }
 
-  "messageSignerFlow" should "sign binary messages with a private key -ECDSA - StandardEncoding" in {
+  it should "sign binary messages with a private key -ECDSA - StandardEncoding" in {
 
     val curve = MessageSignerMicroservice.curveFromString("ECDSA").getOrElse(fail("No curve found"))
     val privKey = GeneratorKeyFactory.getPrivKey(curve)
@@ -86,11 +86,11 @@ class MessageSignerTest extends FlatSpec with Matchers {
     decoded.map{ pm => assert(ASN1Sequence.getInstance(pm.getSignature) != null) }
 
     val decodedPayloads = decoded.map(_.getPayload)
-    decodedPayloads should equal(originalPayloads)
+    decodedPayloads.map(_.asText()) should equal(originalPayloads.map(_.asText()))
 
   }
 
-  "messageSignerFlow" should "sign binary messages with a private key -ECDSA - PlainEncoding" in {
+  it should "sign binary messages with a private key -ECDSA - PlainEncoding" in {
 
     val curve = MessageSignerMicroservice.curveFromString("ECDSA").getOrElse(fail("No curve found"))
     val privKey = GeneratorKeyFactory.getPrivKey(curve)
@@ -112,11 +112,13 @@ class MessageSignerTest extends FlatSpec with Matchers {
 
     val originalPayloads = testMessages.map(_.getBytes(UTF_8)).map(EnvelopeDeserializer.deserialize(null, _)).map(_.ubirchPacket.getPayload)
     val decodedPayloads = decoded.map(_.getPayload)
-    decodedPayloads should equal(originalPayloads)
+    assert(decodedPayloads.size ==  originalPayloads.size)
+    assert(decodedPayloads.size == 4)
+    decodedPayloads.map(_.asText()) should equal(originalPayloads.map(_.asText()))
 
   }
 
-  "messageSignerFlow" should "sign binary messages with a private key with algorithm Ed25519 header" in {
+  it should "sign binary messages with a private key with algorithm Ed25519 header" in {
 
     val curve = MessageSignerMicroservice.curveFromString("Ed25519").getOrElse(fail("No curve found"))
     val privKey = GeneratorKeyFactory.getPrivKey(curve)
@@ -137,7 +139,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
       .map(_.ubirchPacket.getPayload)
 
     val decodedPayloads = decoded.map(_.getPayload)
-    decodedPayloads should equal(originalPayloads)
+    decodedPayloads.map(_.asText()) should equal(originalPayloads.map(_.asText()))
   }
 
   it should "sign json messages with a private key" in {
@@ -198,9 +200,10 @@ class MessageSignerTest extends FlatSpec with Matchers {
 
   // scalastyle:off line.size.limit
   private def testMessages = List(
-    """{"ubirchPacket": {"version":35,"uuid":"7fb478b7-4aba-461f-bc50-faba6d754490","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"payload":"some bytes!"}, "context": {}}""",
-    """{"ubirchPacket": {"version":35,"uuid":"d21c174f-5419-49d4-a614-e95ca0ea862e","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"payload":"some other stuff"}, "context": {}}""",
-    """{"ubirchPacket": {"version":35,"uuid":"670f05ec-c850-43a0-b6ba-225cac26e3b2","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":50,"payload":[123,42,1337]}, "context": {}}"""
+    """{"ubirchPacket": {"version":35,"uuid":"7fb478b7-4aba-461f-bc50-faba6d754490","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"payload":"some"}, "context": {}}"""
+  , """{"ubirchPacket": {"version":35,"uuid":"d21c174f-5419-49d4-a614-e95ca0ea862e","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"payload":"some other stuff"}, "context": {}}"""
+  , """{"ubirchPacket": {"version":35,"uuid":"670f05ec-c850-43a0-b6ba-225cac26e3b2","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":50,"payload":[123,42,1337]}, "context": {}}"""
+  , """{"ubirchPacket": {"version":35,"uuid":"8fb478b7-4aba-461f-bc50-faba6d754491","chain":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==","hint":0,"payload":"hola"}, "context": {}}""",
   )
   // scalastyle:on line.size.limit
 
