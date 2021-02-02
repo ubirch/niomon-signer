@@ -55,10 +55,9 @@ object MessageSignerMicroservice {
 
   def curveFromString(algorithm: String): Option[Curve] = algorithm match {
     case "ECC_ED25519" | "Ed25519" => Some(Curve.Ed25519)
-    case "ECC_ECDSA" | "ecdsa-p256v1" | "ECDSA" | "SHA256withECDSA" => Some(Curve.PRIME256V1)
+    case "ECC_ECDSA" | "ecdsa-p256v1" | "ECDSA" | "SHA256withECDSA" | "SHA256WITHPLAIN-ECDSA" => Some(Curve.PRIME256V1)
     case _ => None
   }
-
 
   def apply(signerFactory: Config => Map[Curve, Signer])
            (runtime: NioMicroservice[MessageEnvelope, StringOrByteArray]): MessageSignerMicroservice =
