@@ -68,6 +68,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
     val curve = MessageSignerMicroservice.curveFromString("ECDSA").getOrElse(fail("No curve found"))
     val privKey = GeneratorKeyFactory.getPrivKey(curve)
     val signer = new Signer(privKey) {}
+    privKey.setSignatureAlgorithm("SHA256withECDSA")
     val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
     microservice.outputTopics = Map("http" -> "outgoing", "mqtt" -> "shouldnt-be-used")
     import microservice.kafkaMocks._
@@ -95,6 +96,7 @@ class MessageSignerTest extends FlatSpec with Matchers {
     val curve = MessageSignerMicroservice.curveFromString("SHA256withECDSA").getOrElse(fail("No curve found"))
     val privKey = GeneratorKeyFactory.getPrivKey(curve)
     val signer = new Signer(privKey) {}
+    privKey.setSignatureAlgorithm("SHA256withECDSA")
     val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
     microservice.outputTopics = Map("http" -> "outgoing", "mqtt" -> "shouldnt-be-used")
     import microservice.kafkaMocks._
@@ -121,7 +123,6 @@ class MessageSignerTest extends FlatSpec with Matchers {
 
     val curve = MessageSignerMicroservice.curveFromString("ECDSA").getOrElse(fail("No curve found"))
     val privKey = GeneratorKeyFactory.getPrivKey(curve)
-    privKey.setSignatureAlgorithm("SHA256WITHPLAIN-ECDSA")
     val signer = new Signer(privKey) {}
     val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
     microservice.outputTopics = Map("http" -> "outgoing", "mqtt" -> "shouldnt-be-used")
@@ -149,7 +150,6 @@ class MessageSignerTest extends FlatSpec with Matchers {
 
     val curve = MessageSignerMicroservice.curveFromString("SHA256WITHPLAIN-ECDSA").getOrElse(fail("No curve found"))
     val privKey = GeneratorKeyFactory.getPrivKey(curve)
-    privKey.setSignatureAlgorithm("SHA256WITHPLAIN-ECDSA")
     val signer = new Signer(privKey) {}
     val microservice = messageSignerMicroservice(_ => Map(curve -> signer))
     microservice.outputTopics = Map("http" -> "outgoing", "mqtt" -> "shouldnt-be-used")
