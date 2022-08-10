@@ -1,11 +1,12 @@
 package com.ubirch.messagesigner
 
-import akka.ConfigurationException
-import com.typesafe.config.Config
 import com.ubirch.crypto.utils.Curve
 import com.ubirch.kafka.{MessageEnvelope, _}
 import com.ubirch.messagesigner.StringOrByteArray._
 import com.ubirch.niomon.base.{NioMicroservice, NioMicroserviceLogic}
+
+import akka.ConfigurationException
+import com.typesafe.config.Config
 import net.logstash.logback.argument.StructuredArguments.v
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -29,14 +30,12 @@ class MessageSignerMicroservice(
 
     logger.info(s"signing response: ${record.value().ubirchPacket} algorithm=[$algorithm] | curve=[${maybeCurve.map(_.name()).getOrElse("No curve")}]", v("requestId", requestId))
 
-    val maybeSigner = for {
+    val signer = (for {
       curve <- maybeCurve
       signer <- signers.get(curve)
     } yield {
       signer
-    }
-
-    val signer = maybeSigner.getOrElse {
+    }).getOrElse {
       val curve = Curve.Ed25519
       logger.error(s"no signer found for algorithm [$algorithm] defaulting to [${curve.toString}]")
       signers(curve)
@@ -53,13 +52,41 @@ class MessageSignerMicroservice(
 
 object MessageSignerMicroservice {
 
-  def curveFromString(algorithm: String): Option[Curve] = algorithm match {
-    case "ECC_ED25519" | "Ed25519" => Some(Curve.Ed25519)
-    case "ECC_ECDSA" | "ecdsa-p256v1" | "ECDSA" | "SHA256withECDSA" | "SHA256WITHPLAIN-ECDSA" => Some(Curve.PRIME256V1)
-    case _ => None
+  final val ECDSA_names = List(
+    "ecdsa-p256v1",
+    "ECC_ECDSA",
+    "ECDSA",
+    "SHA256withECDSA",
+    "SHA512withECDSA",
+    "SHA256withPLAIN-ECDSA",
+    "SHA512withPLAIN-ECDSA"
+  )
+  final val EDDSA_names = List(
+    "ed25519-sha-512",
+    "ECC_ED25519",
+    "Ed25519",
+    "1.3.101.112"
+  )
+
+  def curveFromString(algorithm: String): Option[Curve] = {
+    algorithm.toLowerCase match {
+      case a if ECDSA_names.map(_.toLowerCase).contains(a) => Option(Curve.PRIME256V1)
+      case a if EDDSA_names.map(_.toLowerCase).contains(a) => Option(Curve.Ed25519)
+      case _ => None
+    }
+  }
+
+  def normalize(algorithm: String): Option[String] = {
+    algorithm.toLowerCase match {
+      case a if ECDSA_names.map(_.toLowerCase).contains(a) => Option("ecdsa-p256v1")
+      case a if EDDSA_names.map(_.toLowerCase).contains(a) => Option("ECC_ED25519")
+      case _ => None
+    }
   }
 
   def apply(signerFactory: Config => Map[Curve, Signer])
            (runtime: NioMicroservice[MessageEnvelope, StringOrByteArray]): MessageSignerMicroservice =
     new MessageSignerMicroservice(signerFactory, runtime)
+
 }
+
