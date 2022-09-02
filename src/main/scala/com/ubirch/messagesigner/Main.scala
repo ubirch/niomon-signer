@@ -49,7 +49,7 @@ object Main extends StrictLogging {
             }
             val signer = new Signer(privKey)
 
-            logger.debug(s"[rawAlg=$rawAlg] [curve=$curve.] [rawKey=***]")
+            logger.debug(s"signer_detected: [rawAlg=$rawAlg] [curve=$curve.] [rawKey=***]")
 
             curve -> signer
           }.toMap
