@@ -16,10 +16,12 @@
 
 package com.ubirch.messagesigner
 
-import com.typesafe.scalalogging.StrictLogging
 import com.ubirch.crypto.GeneratorKeyFactory
 import com.ubirch.messagesigner.StringOrByteArray._
 import com.ubirch.niomon.base.NioMicroserviceLive
+
+import com.typesafe.scalalogging.StrictLogging
+import org.bouncycastle.util.encoders.Base64
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -41,6 +43,7 @@ object Main extends StrictLogging {
             }
 
             val privKey = GeneratorKeyFactory.getPrivKey(rawKey, curve)
+            val pubKey = Base64.toBase64String(privKey.getRawPublicKey)
             if(rawAlg == "ECDSA") {
               // We let our key ouput plain format for its signature (r,s)
               // BC will then internally select the proper signature algorithm
@@ -49,7 +52,7 @@ object Main extends StrictLogging {
             }
             val signer = new Signer(privKey)
 
-            logger.debug(s"signer_detected: [rawAlg=$rawAlg] [curve=$curve.] [rawKey=***]")
+            logger.debug(s"signer_detected: [rawAlg=$rawAlg] [curve=$curve.] [pubKey=$pubKey] [rawKey=***]")
 
             curve -> signer
           }.toMap
